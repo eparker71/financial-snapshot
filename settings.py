@@ -8,13 +8,13 @@
 #   export FRED_API_KEY="..."
 #
 
-from app_secrets import TEST_EMAIL_ADDRESS, RECIPIENT_LIST, TEST_MODE
+from app_secrets import TEST_EMAIL_ADDRESS, RECIPIENT_LIST, TEST_MODE_SET
 
 # ── Test mode ─────────────────────────────────────────────────────────────────
 # Set TEST_MODE = True while developing. Emails will only go to TEST_EMAIL.
 # Flip to False when you're ready to send to the full list.
 
-TEST_MODE  = TEST_MODE
+TEST_MODE  = TEST_MODE_SET
 TEST_EMAIL = TEST_EMAIL_ADDRESS
 
 # ── Recipients ────────────────────────────────────────────────────────────────
