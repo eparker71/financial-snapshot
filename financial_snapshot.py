@@ -130,8 +130,8 @@ def fetch_fear_greed():
         log.warning(f"Fear & Greed error: {e}")
         return None, None
 
-def fetch_gas():
-    """US avg gas price via EIA v2 API with retry."""
+def _eia_fetch_price(product_code: str) -> tuple:
+    """Fetch a single EIA weekly fuel price by product code. Returns (price, period) or (None, None)."""
     if not EIA_API_KEY:
         return None, None
     url = (
@@ -139,7 +139,7 @@ def fetch_gas():
         f"?api_key={EIA_API_KEY}"
         f"&frequency=weekly"
         f"&data[0]=value"
-        f"&facets[product][]=EPMR"
+        f"&facets[product][]={product_code}"
         f"&facets[duoarea][]=NUS"
         f"&sort[0][column]=period"
         f"&sort[0][direction]=desc"
@@ -152,13 +152,20 @@ def fetch_gas():
             row = r.json()["response"]["data"][0]
             return float(row["value"]), row["period"]
         except requests.Timeout:
-            log.warning(f"EIA timeout attempt {attempt + 1}")
+            log.warning(f"EIA timeout attempt {attempt + 1} for {product_code}")
             continue
         except Exception as e:
-            log.warning(f"EIA gas price error: {e}")
+            log.warning(f"EIA price error for {product_code}: {e}")
             return None, None
-    log.warning("EIA gas price failed after 2 attempts")
+    log.warning(f"EIA price failed after 2 attempts for {product_code}")
     return None, None
+
+def fetch_gas():
+    """US avg regular gas and diesel prices via EIA. Returns (gas_price, diesel_price, period)."""
+    gas_price,    gas_period    = _eia_fetch_price("EPMR")   # Regular unleaded
+    diesel_price, diesel_period = _eia_fetch_price("EPD2D")  # No. 2 on-highway diesel
+    period = gas_period or diesel_period
+    return gas_price, diesel_price, period
 
 def fetch_national_debt():
     """
@@ -335,11 +342,14 @@ def build_html(data: dict, now: datetime) -> str:
     )
 
     # ── Energy ────────────────────────────────────────────────────────────────
-    gas_price, gas_period = data.get("gas", (None, None))
-    energy_rows = row(
-        "US Avg Gas",
-        f"${gas_price:.3f}/gal" if gas_price else "N/A",
-        sub=f"EIA week ending {gas_period}" if gas_period else "EIA (add EIA_API_KEY for live data)"
+    gas_price, diesel_price, gas_period = data.get("gas", (None, None, None))
+    energy_rows = (
+        row("US Avg Gas (regular)",
+            f"${gas_price:.3f}/gal" if gas_price else "N/A",
+            sub=f"EIA week ending {gas_period}" if gas_period else "EIA (add EIA_API_KEY for live data)")
+        + row("US Avg Diesel",
+            f"${diesel_price:.3f}/gal" if diesel_price else "N/A",
+            sub=f"EIA week ending {gas_period}" if gas_period else "")
     )
 
     # ── Metals & Commodities ──────────────────────────────────────────────────
@@ -552,7 +562,7 @@ def build_plain(data: dict, now: datetime) -> str:
     btc_pct = data.get("btc_change_pct")
     eth_pct = data.get("eth_change_pct")
     fg_val, fg_label = data.get("fear_greed", (None, None))
-    gas_price, gas_period = data.get("gas", (None, None))
+    gas_price, diesel_price, gas_period = data.get("gas", (None, None, None))
 
     gold_p, gold_c, gold_pct   = data.get("gold",    (None, None, None))
     silv_p, silv_c, silv_pct   = data.get("silver",  (None, None, None))
@@ -587,7 +597,8 @@ def build_plain(data: dict, now: datetime) -> str:
     lines.append(p("Fear & Greed", f"{fg_val} ({fg_label})" if fg_val else "N/A"))
 
     lines.append("\nENERGY\n")
-    lines.append(p("US Avg Gas", f"${gas_price:.3f}/gal" if gas_price else "N/A"))
+    lines.append(p("US Avg Gas (regular)", f"${gas_price:.3f}/gal" if gas_price else "N/A"))
+    lines.append(p("US Avg Diesel",        f"${diesel_price:.3f}/gal" if diesel_price else "N/A"))
 
     lines.append("\nMETALS & COMMODITIES\n")
     lines.append(p("Gold",        fmt_price(gold_p), fmt_change(gold_c, gold_pct)))
@@ -723,7 +734,7 @@ def main():
     for addr in EMAIL_TO:
         try:
             result = send_email(subject, html, plain, addr)
-            log.info(f"Sent to {addr} — message_id: {result.get('id')} - subject: {subject}")
+            log.info(f"Sent to {addr} — message_id: {result.get('id')}")
             print(f"✓ Sent to {addr}")
         except requests.HTTPError as e:
             log.error(f"Failed to send to {addr}: {e.response.status_code} {e.response.text}")
