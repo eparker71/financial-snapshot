@@ -17,6 +17,11 @@ from app_secrets import TEST_EMAIL_ADDRESS, RECIPIENT_LIST, TEST_MODE_SET
 TEST_MODE  = TEST_MODE_SET
 TEST_EMAIL = TEST_EMAIL_ADDRESS
 
+# ── Create HTML output file ──────────────────────────────────────────----──────
+
+HTML_OUTPUT = True  # Set to False to disable saving the HTML output to a file.
+HTML_PATH   = "html"  # Directory where HTML output files will be saved.
+
 # ── Recipients ────────────────────────────────────────────────────────────────
 # Add or remove addresses here. TEST_MODE above overrides this list.
 

@@ -2,6 +2,10 @@
 backups/
 testing/
 venv/
+
+# do not commit html files from dev 
+html/
+
 __pycache__/
 local_settings.py
 db.sqlite3
@@ -9,4 +13,6 @@ db.sqlite3-journal
 *.py[cod]
 *.log
 *.sh
+
+# do not commit secrets
 app_secrets.py
