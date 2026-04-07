@@ -23,8 +23,10 @@ EIA_API_KEY        = os.environ.get("EIA_API_KEY", "")     # free at eia.gov/api
 FRED_API_KEY       = os.environ.get("FRED_API_KEY", "")    # free at fred.stlouisfed.org
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE
-LOG_FILE = os.environ.get("LOG_FILE", LOG_FILE)  # env var still overrides if set
+from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE_PATH
+#LOG_FILE = os.environ.get("LOG_FILE", LOG_FILE)  # env var still overrides if set
+LOG_FILE = LOG_FILE_PATH
+
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -522,7 +524,7 @@ def build_html(data: dict, now: datetime) -> str:
   table     {{ width: 100%; border-collapse: collapse; margin: 0 0 20px 0; }}
   /*tbody tr  {{ border-bottom: 1px solid #e5e5e5; }}*/
   tbody tr:last-child {{ border-bottom: none; }}
-  td        {{ padding: 9px 12px; font-size: 16px; vertical-align: top; }}
+  td        {{ padding: 2px 12px; font-size: 14px; vertical-align: top; }}
   td.label  {{ color: #444; width: 50%; }}
   td.val    {{ color: #111; font-variant-numeric: tabular-nums; font-weight: 500; }}
   .chg      {{ font-size: 13px; margin-left: 6px; font-weight: 400; }}

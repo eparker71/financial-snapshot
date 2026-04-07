@@ -26,3 +26,4 @@ RECIPIENTS = RECIPIENT_LIST
 # Overridden by the LOG_FILE environment variable if set.
 
 LOG_FILE = "financial_snapshot.log"
+
