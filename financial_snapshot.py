@@ -798,16 +798,19 @@ def main():
             result = send_email(subject, html, plain, addr)
             log.info(f"Sent to {addr} — message_id: {result.get('id')}")
             print(f"✓ Sent to {addr}")
-            
-            if HTML_OUTPUT:
-                filename = f"{HTML_PATH}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-                with open(filename, "w", encoding="utf-8") as f:
-                    f.write(html)
-                    log.info(f"Saved HTML output to {filename}")
-                    print(f"✓ Saved HTML output to {filename}")
         except requests.HTTPError as e:
             log.error(f"Failed to send to {addr}: {e.response.status_code} {e.response.text}")
-
+    
+    if HTML_OUTPUT:
+        try:
+            filename = f"{HTML_PATH}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(html)
+                log.info(f"Saved HTML output to {filename}")
+                print(f"✓ Saved HTML output to {filename}")
+        except OSError as e:
+            log.error(f"Failed to write HTML file: {e}")
+            print(f"✗ Failed to save HTML output: {e}")
 
 if __name__ == "__main__":
     main()
