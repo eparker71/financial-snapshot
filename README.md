@@ -1,45 +1,179 @@
-# Financial-Snapshot
+# Financial Snapshot Emailer
 
-This app uses AGENTMAIL to send email. You will need the following API keys
+A Python application that fetches live financial market data from multiple APIs and sends a formatted HTML email snapshot using AgentMail.
 
-* AGENTMAIL_API_KEY - https://www.agentmail.to/
-* EIA_API_KEY - https://www.eia.gov/opendata/register.php
-* FRED_API_KEY - https://fred.stlouisfed.org/docs/api/api_key.html
+## Features
 
-```
-# ── In settings.py you will find ───────────────────────────────────────────────────────────────
-# Non-sensitive configuration for financial_snapshot.py.
-# API keys do NOT go here — set those as environment variables or in app_secrets.py
-# the app expects env vars. if you choose to use app_secrets you will need to mofidify the app. 
-# 
-#.  set env vars:
-#   export AGENTMAIL_API_KEY="..."
-#   export AGENTMAIL_INBOX_ID="..."
-#   export EIA_API_KEY="..."
-#   export FRED_API_KEY="..."
-#
-```
+- **Cryptocurrency Data**: Bitcoin and Ethereum prices from CoinGecko, Fear & Greed Index from Alternative.me
+- **Energy Prices**: US gas and diesel prices from EIA (Energy Information Administration)
+- **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
+- **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
+- **National Debt**: US national debt data from Treasury Fiscal Data API
+- **Email Delivery**: Sends formatted HTML emails via AgentMail
+- **Test Mode**: Safe testing mode that only sends to test email addresses
 
+## Project Structure
 
-You will need to create a file called app_secrets.py with the following contents.
+The application has been refactored into modular API components for better maintainability:
 
 ```
-# ── Secrets and Configurations ───────────────────────────────────────────────
-# This file contains sensitive information and should not be shared publicly.
-# It is used to store email credentials and recipient lists for the application.    
-# if TEST_MODE_SET is TRUE the app will only send email to the TEST_EMAIL_ADDRESS address
-# otherwise it will send to the RECIPIENT_LIST
-
-TEST_MODE_SET = True
-TEST_EMAIL_ADDRESS = "address for testing"
-
-# ── Recipients ────────────────────────────────────────────────────────────────
-# Add or remove addresses here. TEST_MODE above overrides this list.
-# If TEST_MODE is True, only TEST_EMAIL_ADDRESS will receive emails.
-
-RECIPIENT_LIST = [
-    email1@somewhere.com,
-    email2@someplace.org,
-    ...
-]
+financial_snapshot.py     # Main application orchestrator
+├── crypto_api.py         # CoinGecko and Alternative.me APIs
+├── energy_api.py         # EIA energy prices API
+├── fred_api.py           # FRED economic data API
+├── treasury_api.py       # US Treasury debt API
+├── yahoo_api.py          # Yahoo Finance API
+├── settings.py           # Configuration settings
+├── app_secrets.py        # Sensitive email configuration
+└── html/                 # HTML output directory
 ```
+
+## Setup
+
+### 1. Clone and Install Dependencies
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. API Keys
+
+You need to obtain API keys for the following services:
+
+- **AGENTMAIL_API_KEY** - Get from [AgentMail](https://www.agentmail.to/)
+- **AGENTMAIL_INBOX_ID** - Your AgentMail inbox ID
+- **EIA_API_KEY** - Get from [EIA Open Data](https://www.eia.gov/opendata/register.php)
+- **FRED_API_KEY** - Get from [FRED API](https://fred.stlouisfed.org/docs/api/api_key.html)
+
+Set these as environment variables:
+
+```bash
+export AGENTMAIL_API_KEY="your_agentmail_key"
+export AGENTMAIL_INBOX_ID="your_inbox_id"
+export EIA_API_KEY="your_eia_key"
+export FRED_API_KEY="your_fred_key"
+```
+
+### 3. Email Configuration
+
+Create `app_secrets.py` with your email settings:
+
+```python
+# app_secrets.py - Sensitive configuration
+
+# Test mode settings
+TEST_MODE_SET = True  # Set to True for testing, False for production
+
+# Email addresses
+TEST_EMAIL_ADDRESS = "test@example.com"  # Email for test mode
+RECIPIENT_LIST = ["recipient1@example.com", "recipient2@example.com"]  # Production recipients
+```
+
+**Note**: If `TEST_MODE_SET = True`, emails will only be sent to `TEST_EMAIL_ADDRESS`. Set to `False` for production use.
+
+## Configuration
+
+### settings.py
+
+Contains non-sensitive configuration:
+
+- `TEST_MODE`: Whether to use test mode (overrides `app_secrets.py`)
+- `TEST_EMAIL`: Test email address
+- `RECIPIENTS`: Production email recipients
+- `LOG_FILE`: Path to log file
+- `HTML_OUTPUT`: Whether to save HTML output to file
+- `HTML_PATH`: Directory for HTML output files
+
+### Environment Variables
+
+The app prioritizes environment variables over `app_secrets.py` settings:
+
+```bash
+export LOG_FILE="/path/to/custom/logfile.log"
+```
+
+## Usage
+
+### Running the Application
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run the financial snapshot
+python financial_snapshot.py
+```
+
+### Scheduled Execution
+
+Set up a cron job to run daily (example for 7 AM ET):
+
+```bash
+# Add to crontab (crontab -e)
+0 7 * * * /path/to/venv/bin/python /path/to/financial_snapshot.py
+```
+
+### HTML Output
+
+When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
+
+## APIs Used
+
+| API | Purpose | Key Required |
+|-----|---------|--------------|
+| CoinGecko | Cryptocurrency prices | No |
+| Alternative.me | Fear & Greed Index | No |
+| EIA | Energy prices | Yes |
+| FRED | Economic indicators | Yes |
+| Yahoo Finance | Market data | No |
+| Treasury Fiscal Data | National debt | No |
+| AgentMail | Email delivery | Yes |
+
+## Data Sources
+
+The email includes sections for:
+
+- **US Markets**: Live indices or futures (depending on market hours)
+- **Volatility**: VIX index
+- **Cryptocurrencies**: BTC, ETH, Fear & Greed Index
+- **Energy**: Gas prices, crude oil
+- **Metals**: Gold, silver
+- **Currencies**: USD/JPY, EUR/USD
+- **Bonds & Rates**: Treasury yields, mortgage rates, credit card APR
+- **Consumer Prices**: Eggs, milk, grocery inflation
+- **Macro Economy**: GDP, CPI, unemployment, national debt
+
+## Logging
+
+The application logs to the file specified in `LOG_FILE` (default: `financial_snapshot.log`). Check the logs for API errors or delivery status.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Missing API Keys**: Ensure all required API keys are set as environment variables
+2. **Email Not Sending**: Check AgentMail API key and inbox ID
+3. **Import Errors**: Make sure you're running from the virtual environment
+4. **Permission Errors**: Ensure write permissions for log files and HTML output directory
+
+### Test Mode
+
+Always test with `TEST_MODE_SET = True` first to avoid sending emails to production recipients.
+
+## Development
+
+The modular structure makes it easy to:
+
+- Add new data sources by creating new API modules
+- Modify existing APIs without affecting other components
+- Test individual API modules independently
+- Extend functionality while maintaining clean separation of concerns
+
+## License
+
+This project is for educational and personal use. Please respect API terms of service and rate limits.

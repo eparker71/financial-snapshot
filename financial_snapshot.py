@@ -15,12 +15,17 @@ from zoneinfo import ZoneInfo
 import yfinance as yf
 import zoneinfo
 
+# Import API modules
+from crypto_api import fetch_crypto, fetch_fear_greed
+from energy_api import fetch_gas
+from treasury_api import fetch_national_debt
+from fred_api import fetch_everyday_economy
+from yahoo_api import fetch_yahoo_data
+
 # ── Config ────────────────────────────────────────────────────────────────────
 # API keys — set as environment variables, never hardcode
 AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "YOUR_AGENTMAIL_API_KEY")
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "YOUR_INBOX_ID")
-EIA_API_KEY        = os.environ.get("EIA_API_KEY", "")     # free at eia.gov/api
-FRED_API_KEY       = os.environ.get("FRED_API_KEY", "")    # free at fred.stlouisfed.org
 
 # Non-sensitive config — managed in settings.py
 from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE, HTML_OUTPUT, HTML_PATH
@@ -71,238 +76,6 @@ def fmt_pct_change(pct, suffix="% MoM", decimals=2):
         return ""
     sign = "+" if pct >= 0 else ""
     return f"({sign}{pct:.{decimals}f}{suffix})"
-
-def yf_price(symbol):
-    """Return (last_price, change, change_pct) or (None, None, None)."""
-    try:
-        t  = yf.Ticker(symbol)
-        fi = t.fast_info
-        price = fi.last_price
-        prev  = fi.previous_close
-        if price is None or prev is None:
-            return None, None, None
-        change = price - prev
-        pct    = (change / prev) * 100
-        return price, change, pct
-    except Exception as e:
-        log.warning(f"yf_price error for {symbol}: {e}")
-        return None, None, None
-
-def yf_rate(symbol):
-    return yf_price(symbol)
-
-# ── Data fetchers ─────────────────────────────────────────────────────────────
-
-def fetch_crypto():
-    """BTC and ETH via CoinGecko /coins/markets (no key needed)."""
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {
-        "vs_currency": "usd",
-        "ids": "bitcoin,ethereum",
-        "order": "market_cap_desc",
-        "per_page": 2,
-        "page": 1,
-        "sparkline": False,
-        "price_change_percentage": "24h",
-    }
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        data = {item["id"]: item for item in r.json()}
-        btc  = data.get("bitcoin", {})
-        eth  = data.get("ethereum", {})
-        return {
-            "btc_price":      btc.get("current_price"),
-            "btc_change_pct": btc.get("price_change_percentage_24h"),
-            "eth_price":      eth.get("current_price"),
-            "eth_change_pct": eth.get("price_change_percentage_24h"),
-        }
-    except Exception as e:
-        log.warning(f"CoinGecko error: {e}")
-        return {}
-
-def fetch_fear_greed():
-    """Crypto Fear & Greed Index via alternative.me."""
-    try:
-        r     = requests.get("https://api.alternative.me/fng/?limit=1", timeout=10)
-        r.raise_for_status()
-        entry = r.json()["data"][0]
-        return int(entry["value"]), entry["value_classification"]
-    except Exception as e:
-        log.warning(f"Fear & Greed error: {e}")
-        return None, None
-
-def _eia_fetch_price(product_code: str) -> tuple:
-    """Fetch a single EIA weekly fuel price by product code. Returns (price, period) or (None, None)."""
-    if not EIA_API_KEY:
-        return None, None
-    url = (
-        f"https://api.eia.gov/v2/petroleum/pri/gnd/data/"
-        f"?api_key={EIA_API_KEY}"
-        f"&frequency=weekly"
-        f"&data[0]=value"
-        f"&facets[product][]={product_code}"
-        f"&facets[duoarea][]=NUS"
-        f"&sort[0][column]=period"
-        f"&sort[0][direction]=desc"
-        f"&length=1"
-    )
-    for attempt in range(2):
-        try:
-            r = requests.get(url, timeout=45)
-            r.raise_for_status()
-            row = r.json()["response"]["data"][0]
-            return float(row["value"]), row["period"]
-        except requests.Timeout:
-            log.warning(f"EIA timeout attempt {attempt + 1} for {product_code}")
-            continue
-        except Exception as e:
-            log.warning(f"EIA price error for {product_code}: {e}")
-            return None, None
-    log.warning(f"EIA price failed after 2 attempts for {product_code}")
-    return None, None
-
-def fetch_gas():
-    """US avg regular gas and diesel prices via EIA. Returns (gas_price, diesel_price, period)."""
-    gas_price,    gas_period    = _eia_fetch_price("EPMR")   # Regular unleaded
-    diesel_price, diesel_period = _eia_fetch_price("EPD2D")  # No. 2 on-highway diesel
-    period = gas_period or diesel_period
-    return gas_price, diesel_price, period
-
-def fetch_national_debt():
-    """
-    US national debt (to the penny) from the Treasury Fiscal Data API.
-    No API key required. Updated each business day.
-    Returns (debt_usd, date_str) or (None, None).
-    """
-    url = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/debt_to_penny"
-    params = {
-        "fields":     "record_date,tot_pub_debt_out_amt",
-        "sort":       "-record_date",
-        "page[size]": 2,  # latest + previous for day-over-day change
-    }
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()
-        records = r.json()["data"]
-        latest  = float(records[0]["tot_pub_debt_out_amt"])
-        prev    = float(records[1]["tot_pub_debt_out_amt"])
-        date    = records[0]["record_date"]
-        change  = latest - prev
-        return latest, prev, change, date
-    except Exception as e:
-        log.warning(f"National debt fetch error: {e}")
-        return None, None, None, None
-
-
-# ── FRED / Everyday Economy ───────────────────────────────────────────────────
-#
-#  All series IDs reference BLS data published through FRED.
-#  Prices (eggs, milk) are monthly and typically lag 2-4 weeks.
-#  Gas is already covered by EIA above — not duplicated here.
-#
-#  Series reference:
-#    APU0000708111  Eggs, Grade A Large, per dozen
-#    APU0000709112  Milk, whole, per gallon
-#    CPIAUCSL       CPI All Items (used for YoY headline inflation)
-#    CUUR0000SAF11  CPI Food at Home (grocery inflation)
-#    CUUR0000SEHA   CPI Shelter
-#    MORTGAGE30US   30-Year Fixed Mortgage Rate (weekly)
-#    TERMCBCCALLNS  Credit Card Interest Rate (quarterly)
-#    UNRATE         Unemployment Rate
-
-FRED_BASE = "https://api.stlouisfed.org/fred/series/observations"
-
-def _fred_fetch(series_id: str, limit: int = 14) -> list[dict]:
-    """Return up to `limit` most-recent valid observations for a FRED series."""
-    if not FRED_API_KEY:
-        return []
-    try:
-        r = requests.get(FRED_BASE, params={
-            "series_id":  series_id,
-            "api_key":    FRED_API_KEY,
-            "file_type":  "json",
-            "sort_order": "desc",
-            "limit":      limit,
-        }, timeout=10)
-        r.raise_for_status()
-        obs = r.json().get("observations", [])
-        # Filter out FRED placeholder "." values for missing data
-        return [o for o in obs if o.get("value") not in (".", "", None)]
-    except Exception as e:
-        log.warning(f"FRED fetch error ({series_id}): {e}")
-        return []
-
-def _fred_mom(series_id: str):
-    """Latest value + month-over-month % change. Returns (value, mom_pct, date) or Nones."""
-    obs = _fred_fetch(series_id, limit=3)
-    if len(obs) < 2:
-        return None, None, None
-    latest = float(obs[0]["value"])
-    prev   = float(obs[1]["value"])
-    mom    = ((latest - prev) / prev) * 100 if prev else None
-    return latest, mom, obs[0]["date"]
-
-def _fred_yoy(series_id: str):
-    """Latest value + year-over-year % change. Returns (value, yoy_pct, date) or Nones."""
-    obs = _fred_fetch(series_id, limit=14)
-    if len(obs) < 13:
-        return None, None, None
-    latest   = float(obs[0]["value"])
-    year_ago = float(obs[12]["value"])
-    yoy      = ((latest - year_ago) / year_ago) * 100 if year_ago else None
-    return latest, yoy, obs[0]["date"]
-
-def fetch_everyday_economy() -> dict:
-    """
-    Fetch all FRED-sourced everyday economy indicators.
-    Returns a flat dict that gets merged into the main data dict.
-    Keys prefixed with 'ev_' to avoid collisions.
-    """
-    if not FRED_API_KEY:
-        log.info("FRED_API_KEY not set — skipping everyday economy section.")
-        return {}
-
-    result = {}
-
-    # ── Grocery prices (monthly BLS data via FRED) ────────────────────────────
-    for key, series_id in [("ev_eggs", "APU0000708111"), ("ev_milk", "APU0000709112")]:
-        val, mom_pct, date = _fred_mom(series_id)
-        result[key] = (val, mom_pct, date)
-
-    # ── Inflation indexes (YoY %) ─────────────────────────────────────────────
-    for key, series_id in [
-        ("ev_cpi_all",     "CPIAUCSL"),
-        ("ev_cpi_food",    "CUUR0000SAF11"),
-        ("ev_cpi_shelter", "CUUR0000SEHA"),
-    ]:
-        _, yoy_pct, date = _fred_yoy(series_id)
-        result[key] = (yoy_pct, date)
-
-    # ── Interest rates (MoM change in percentage points) ─────────────────────
-    for key, series_id in [
-        ("ev_mortgage",    "MORTGAGE30US"),
-        ("ev_credit_card", "TERMCBCCALLNS"),
-    ]:
-        val, mom_pct, date = _fred_mom(series_id)
-        result[key] = (val, mom_pct, date)
-
-    # ── Unemployment ──────────────────────────────────────────────────────────
-    val, mom_pct, date = _fred_mom("UNRATE")
-    result["ev_unemployment"] = (val, mom_pct, date)
-
-    # ── GDP ───────────────────────────────────────────────────────────────────
-    # Real GDP growth rate (QoQ annualized %) — the headline number people cite
-    gdp_level, _, gdp_date   = _fred_mom("GDP")                  # level in $B
-    _, gdp_growth, _          = _fred_yoy("A191RL1Q225SBEA")     # real growth rate %
-    # For growth we want the latest value, not YoY — reuse _fred_mom
-    gdp_obs = _fred_fetch("A191RL1Q225SBEA", limit=2)
-    gdp_growth_latest = float(gdp_obs[0]["value"]) if gdp_obs else None
-    gdp_growth_prev   = float(gdp_obs[1]["value"]) if len(gdp_obs) > 1 else None
-    gdp_growth_date   = gdp_obs[0]["date"] if gdp_obs else None
-    result["ev_gdp"] = (gdp_level, gdp_date, gdp_growth_latest, gdp_growth_prev, gdp_growth_date)
-
-    return result
 
 # ── HTML builder ──────────────────────────────────────────────────────────────
 
@@ -762,30 +535,9 @@ def main():
     everyday = fetch_everyday_economy()
     data.update(everyday)
 
-    # yfinance tickers
-    ticker_map = {
-        "gold":    "GC=F",
-        "silver":  "SI=F",
-        "oil":     "CL=F",
-        "usdjpy":  "JPY=X",
-        "eurusd":  "EURUSD=X",
-        "t2y":     "^IRX",
-        "t10y":    "^TNX",
-        # Futures (shown when market closed)
-        "dow":     "YM=F",
-        "sp500":   "ES=F",
-        "nasdaq":  "NQ=F",
-        "russell": "RTY=F",
-        # Live indices (shown when market open)
-        "dji":     "^DJI",
-        "gspc":    "^GSPC",
-        "ndx":     "^NDX",
-        "rut":     "^RUT",
-        "vix":     "^VIX",
-    }
-
-    for key, symbol in ticker_map.items():
-        data[key] = yf_price(symbol)
+    # Yahoo Finance data
+    yahoo_data = fetch_yahoo_data()
+    data.update(yahoo_data)
 
     # Build content
     subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Financial Snapshot — {now.strftime('%b %-d, %Y')}"
