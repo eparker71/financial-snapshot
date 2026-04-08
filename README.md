@@ -2,9 +2,9 @@
 
 This app uses AGENTMAIL to send email. You will need the following API keys
 
-AGENTMAIL_API_KEY - https://www.agentmail.to/
-EIA_API_KEY - https://www.eia.gov/opendata/register.php
-FRED_API_KEY - https://fred.stlouisfed.org/docs/api/api_key.html
+* AGENTMAIL_API_KEY - https://www.agentmail.to/
+* EIA_API_KEY - https://www.eia.gov/opendata/register.php
+* FRED_API_KEY - https://fred.stlouisfed.org/docs/api/api_key.html
 
 ```
 # ── In settings.py you will find ───────────────────────────────────────────────────────────────
