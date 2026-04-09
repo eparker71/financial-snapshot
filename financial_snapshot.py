@@ -28,7 +28,7 @@ AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "YOUR_AGENTMAIL_API_KEY
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "YOUR_INBOX_ID")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE, HTML_OUTPUT, HTML_PATH
+from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE, HTML_OUTPUT, HTML_PATH, HTML_ROOT_URL
 #LOG_FILE = os.environ.get("LOG_FILE", LOG_FILE)  # env var still overrides if set
 LOG_FILE = LOG_FILE
 
@@ -367,7 +367,9 @@ def build_html(data: dict, now: datetime) -> str:
   {macro_section}
 
   <div class="footer">Data sourced from CoinGecko, Yahoo Finance, Alternative.me, EIA, FRED/BLS &nbsp;·&nbsp;
-  Not financial advice</div>
+  Not financial advice
+  <a href="{HTML_ROOT_URL}" target="_blank">View in previous days browser</a>
+  </div>
 </div>
 </body>
 </html>"""

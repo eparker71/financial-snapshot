@@ -20,6 +20,7 @@ TEST_EMAIL = TEST_EMAIL_ADDRESS
 # ── Create HTML output file ──────────────────────────────────────────----──────
 
 HTML_OUTPUT = True  # Set to False to disable saving the HTML output to a file.
+HTML_ROOT_URL   = "https://eparker71.github.io/Financial-Snapshot/html/index.html" # Base URL where the HTML files will be hosted. Adjust if you host them elsewhere.
 HTML_PATH   = "html"  # Directory where HTML output files will be saved.
 
 # ── Recipients ────────────────────────────────────────────────────────────────
