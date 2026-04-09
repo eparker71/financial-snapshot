@@ -10,6 +10,7 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail
+- **CSV Export**: Saves a row of snapshot data to `financial_data.csv` for later charting
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
 ## Project Structure
@@ -121,6 +122,10 @@ Set up a cron job to run daily (example for 7 AM ET):
 ### HTML Output
 
 When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
+
+### CSV Export
+
+Each run now also appends a flattened data row to `financial_data.csv` in the project root. This file contains timestamped snapshot values for later charting and analytics.
 
 ## APIs Used
 
