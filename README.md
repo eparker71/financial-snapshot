@@ -10,14 +10,20 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail
+- **CSV Export**: Saves a row of snapshot data to `financial_data.csv` for later charting
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
 ## Project Structure
 
-The application has been refactored into modular API components for better maintainability:
+The application has been refactored into modular components for better maintainability:
 
 ```
 financial_snapshot.py     # Main application orchestrator
+├── csv_export.py         # CSV data export functionality
+├── html_builder.py       # HTML email rendering
+├── plain_text_builder.py # Plain-text email rendering
+├── render_utils.py       # Shared formatting utilities
+├── snapshot_schema.py    # Centralized snapshot data schema
 ├── crypto_api.py         # CoinGecko and Alternative.me APIs
 ├── energy_api.py         # EIA energy prices API
 ├── fred_api.py           # FRED economic data API
@@ -122,6 +128,10 @@ Set up a cron job to run daily (example for 7 AM ET):
 
 When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
 
+### CSV Export
+
+Each run now also appends a flattened data row to `financial_data.csv` in the project root. This file contains timestamped snapshot values for later charting and analytics.
+
 ## APIs Used
 
 | API | Purpose | Key Required |
@@ -173,6 +183,9 @@ The modular structure makes it easy to:
 - Modify existing APIs without affecting other components
 - Test individual API modules independently
 - Extend functionality while maintaining clean separation of concerns
+- Add new output formats by creating new renderer modules (like `html_builder.py`)
+- Update data presentation by modifying the shared `snapshot_schema.py`
+- Customize formatting using shared utilities in `render_utils.py`
 
 ## License
 
