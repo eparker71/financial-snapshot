@@ -4,7 +4,7 @@ testing/
 venv/
 
 # do not commit html files from dev 
-html/
+#html/
 
 __pycache__/
 local_settings.py
