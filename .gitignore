@@ -17,3 +17,4 @@ db.sqlite3-journal
 
 # do not commit secrets
 app_secrets.py
+*.csv
