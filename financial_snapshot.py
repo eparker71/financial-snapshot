@@ -28,10 +28,8 @@ AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "YOUR_AGENTMAIL_API_KEY
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "YOUR_INBOX_ID")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, TEST_EMAIL, RECIPIENTS, LOG_FILE, HTML_OUTPUT, HTML_PATH, HTML_ROOT_URL
+from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT, HTML_PATH, HTML_ROOT_URL
 #LOG_FILE = os.environ.get("LOG_FILE", LOG_FILE)  # env var still overrides if set
-LOG_FILE = LOG_FILE
-
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -42,10 +40,8 @@ log = logging.getLogger(__name__)
 
 ET = ZoneInfo("America/New_York")
 
-# Resolve recipient list — TEST_MODE sends only to TEST_EMAIL
-EMAIL_TO = [TEST_EMAIL] if TEST_MODE else RECIPIENTS
 if TEST_MODE:
-    print(f"⚠️  TEST MODE — sending only to {TEST_EMAIL}")
+    print(f"⚠️  TEST MODE — sending only to {EMAIL_TO[0] if EMAIL_TO else None}")
 
 # ── Send via AgentMail ────────────────────────────────────────────────────────
 
