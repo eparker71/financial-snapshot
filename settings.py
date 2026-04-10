@@ -8,14 +8,11 @@
 #   export FRED_API_KEY="..."
 #
 
-from app_secrets import TEST_EMAIL_ADDRESS, RECIPIENT_LIST, TEST_MODE_SET
+from app_secrets import TEST_EMAIL, TEST_MODE
+from csvdb import CsvDB
 
-# ── Test mode ─────────────────────────────────────────────────────────────────
-# Set TEST_MODE = True while developing. Emails will only go to TEST_EMAIL.
-# Flip to False when you're ready to send to the full list.
-
-TEST_MODE  = TEST_MODE_SET
-TEST_EMAIL = TEST_EMAIL_ADDRESS
+db = CsvDB("users.csv")
+userEmails = db.column("Email")
 
 # ── Create HTML output file ──────────────────────────────────────────----──────
 
@@ -26,7 +23,7 @@ HTML_PATH   = "html"  # Directory where HTML output files will be saved.
 # ── Recipients ────────────────────────────────────────────────────────────────
 # Add or remove addresses here. TEST_MODE above overrides this list.
 
-RECIPIENTS = RECIPIENT_LIST
+EMAIL_TO = [TEST_EMAIL] if TEST_MODE else userEmails
 
 # ── Log file ──────────────────────────────────────────────────────────────────
 # Overridden by the LOG_FILE environment variable if set.
