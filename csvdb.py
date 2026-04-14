@@ -131,7 +131,6 @@ class CsvDB:
 
         db.column("email")  # ['alice@example.com', 'bob@example.com', ...]
         """
-        print(field)
         return [row[field] for row in self._read_all() if field in row]
 
     def clear(self) -> None:
