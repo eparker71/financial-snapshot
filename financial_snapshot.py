@@ -27,8 +27,8 @@ from yahoo_api import fetch_yahoo_data
 
 # ── Config ────────────────────────────────────────────────────────────────────
 # API keys — set as environment variables, never hardcode
-AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "YOUR_AGENTMAIL_API_KEY")
-AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "YOUR_INBOX_ID")
+AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "")
+AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "")
 
 # Non-sensitive config — managed in settings.py
 from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL, CSV_DATA_FILE
