@@ -7,6 +7,8 @@ backups/
 testing/
 venv/
 html/
+data/
+logs/
 __pycache__/
 
 # Specific files
@@ -19,7 +21,4 @@ app_secrets.py
 # File types
 *.py[cod]
 *.log
-*.sh
-*.csv
 *.bak
-*.html
