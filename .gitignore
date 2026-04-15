@@ -12,6 +12,7 @@ logs/
 __pycache__/
 
 # Specific files
+.env
 local_settings.py
 db.sqlite3
 db.sqlite3-journal

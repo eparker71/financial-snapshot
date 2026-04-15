@@ -20,6 +20,7 @@ protobuf==7.34.1
 pycparser==3.0
 pydantic==2.12.5
 pydantic_core==2.41.5
+python-dotenv==1.2.2
 python-dateutil==2.9.0.post0
 pytz==2026.1.post1
 requests==2.33.1

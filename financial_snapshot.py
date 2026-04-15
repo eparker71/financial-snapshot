@@ -11,6 +11,9 @@ import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from dotenv import load_dotenv
+load_dotenv()  # loads .env into os.environ if present; existing env vars take priority
+
 from csv_export import save_to_csv
 from html_builder import build_html
 from plain_text_builder import build_plain
