@@ -30,8 +30,11 @@ financial_snapshot.py     # Main application orchestrator
 ├── treasury_api.py       # US Treasury debt API
 ├── yahoo_api.py          # Yahoo Finance API
 ├── settings.py           # Configuration settings
+├── models.py             # SQLite user model (Peewee ORM)
+├── migrate_users.py      # One-time CSV → SQLite migration script
 ├── .env                  # Secret API keys (never committed)
 ├── .env.example          # Template showing required keys
+├── db.sqlite3            # SQLite database (never committed)
 ├── data/                 # CSV snapshot data (auto-created)
 ├── logs/                 # Application logs (auto-created)
 └── html/                 # HTML output (auto-created)
@@ -89,18 +92,60 @@ TEST_EMAIL = "test@example.com"
 
 **Note**: When `TEST_MODE = True`, emails are only sent to `TEST_EMAIL`. Always test with this enabled before switching to production.
 
+### 4. Set Up the User Database
+
+The recipient list is stored in a local SQLite database. On a fresh clone, initialise it and add your users:
+
+```bash
+# Create the database and table
+python -c "from models import init_db; init_db()"
+
+# Add a user
+python -c "
+from models import User, init_db
+init_db()
+User.create(first_name='Jane', last_name='Doe', email='jane@example.com', format_pref='HTML')
+"
+```
+
+If you are migrating from a `users.csv` file, run the included migration script once:
+
+```bash
+python migrate_users.py
+```
+
 ## Configuration
 
 ### settings.py
 
 Contains non-sensitive configuration:
 
-- `TEST_MODE`: Whether to use test mode (overrides `app_secrets.py`)
-- `TEST_EMAIL`: Test email address
-- `RECIPIENTS`: Production email recipients
-- `LOG_FILE`: Path to log file
-- `HTML_OUTPUT`: Whether to save HTML output to file
-- `HTML_PATH`: Directory for HTML output files
+- `TEST_MODE` / `TEST_EMAIL`: Imported from `app_secrets.py`
+- `EMAIL_TO`: Active users from SQLite when in production, `TEST_EMAIL` when in test mode
+- `CREATE_HTML_OUTPUT_FILE`: Whether to save HTML output to file
+- `HTML_ROOT_URL`: Base URL where archived HTML snapshots are hosted
+- `LOG_FILE`: Path to log file (`logs/financial_snapshot_app.log`)
+- `CSV_DATA_FILE`: Path to snapshot data CSV (`data/data.csv`)
+
+### Managing Users
+
+Users are stored in `db.sqlite3`. Common operations:
+
+```bash
+source venv/bin/activate
+
+# List all active users
+python -c "from models import User, init_db; init_db(); [print(u.email) for u in User.select().where(User.active==True)]"
+
+# Add a user
+python -c "from models import User, init_db; init_db(); User.create(first_name='Jane', last_name='Doe', email='jane@example.com', format_pref='HTML')"
+
+# Deactivate a user (keeps the record)
+python -c "from models import User, init_db; init_db(); User.update(active=False).where(User.email=='jane@example.com').execute()"
+
+# Delete a user
+python -c "from models import User, init_db; init_db(); User.delete().where(User.email=='jane@example.com').execute()"
+```
 
 ### Environment Variables
 
