@@ -9,11 +9,11 @@
 #
 
 from app_secrets import TEST_EMAIL, TEST_MODE
-from csvdb import CsvDB
+from models import User, init_db
 import os
 
-db = CsvDB("users.csv")
-userEmails = db.column("Email")
+init_db()
+userEmails = [u.email for u in User.select().where(User.active == True)]
 
 # ── Create HTML output file ──────────────────────────────────────────----──────
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
