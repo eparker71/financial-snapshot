@@ -10,7 +10,7 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail
-- **CSV Export**: Saves a row of snapshot data to `financial_data.csv` for later charting
+- **CSV Export**: Saves a row of snapshot data to `data/data.csv` for later charting
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
 ## Project Structure
@@ -30,8 +30,11 @@ financial_snapshot.py     # Main application orchestrator
 ├── treasury_api.py       # US Treasury debt API
 ├── yahoo_api.py          # Yahoo Finance API
 ├── settings.py           # Configuration settings
-├── app_secrets.py        # Sensitive email configuration
-└── html/                 # HTML output directory
+├── .env                  # Secret API keys (never committed)
+├── .env.example          # Template showing required keys
+├── data/                 # CSV snapshot data (auto-created)
+├── logs/                 # Application logs (auto-created)
+└── html/                 # HTML output (auto-created)
 ```
 
 ## Setup
@@ -56,31 +59,35 @@ You need to obtain API keys for the following services:
 - **EIA_API_KEY** - Get from [EIA Open Data](https://www.eia.gov/opendata/register.php)
 - **FRED_API_KEY** - Get from [FRED API](https://fred.stlouisfed.org/docs/api/api_key.html)
 
-Set these as environment variables:
+Copy the example env file and fill in your keys:
 
 ```bash
-export AGENTMAIL_API_KEY="your_agentmail_key"
-export AGENTMAIL_INBOX_ID="your_inbox_id"
-export EIA_API_KEY="your_eia_key"
-export FRED_API_KEY="your_fred_key"
+cp .env.example .env
+chmod 600 .env  # restrict to your user only
 ```
+
+```bash
+# .env
+AGENTMAIL_API_KEY=your_agentmail_key
+AGENTMAIL_INBOX_ID=your_inbox_id
+EIA_API_KEY=your_eia_key
+FRED_API_KEY=your_fred_key
+```
+
+The app loads `.env` automatically at startup via `python-dotenv`. The `.env` file is excluded from git. If the keys are already set as environment variables (e.g. in CI or a cron environment), those take priority over `.env`.
 
 ### 3. Email Configuration
 
-Create `app_secrets.py` with your email settings:
+Edit `app_secrets.py` to configure test mode and recipients:
 
 ```python
 # app_secrets.py - Sensitive configuration
 
-# Test mode settings
-TEST_MODE_SET = True  # Set to True for testing, False for production
-
-# Email addresses
-TEST_EMAIL_ADDRESS = "test@example.com"  # Email for test mode
-RECIPIENT_LIST = ["recipient1@example.com", "recipient2@example.com"]  # Production recipients
+TEST_MODE = True  # Set to False for production
+TEST_EMAIL = "test@example.com"
 ```
 
-**Note**: If `TEST_MODE_SET = True`, emails will only be sent to `TEST_EMAIL_ADDRESS`. Set to `False` for production use.
+**Note**: When `TEST_MODE = True`, emails are only sent to `TEST_EMAIL`. Always test with this enabled before switching to production.
 
 ## Configuration
 
@@ -97,11 +104,7 @@ Contains non-sensitive configuration:
 
 ### Environment Variables
 
-The app prioritizes environment variables over `app_secrets.py` settings:
-
-```bash
-export LOG_FILE="/path/to/custom/logfile.log"
-```
+All API keys are read from environment variables (or `.env`). Environment variables always take priority over `.env`, making it safe to use either approach depending on your setup.
 
 ## Usage
 
@@ -121,8 +124,10 @@ Set up a cron job to run daily (example for 7 AM ET):
 
 ```bash
 # Add to crontab (crontab -e)
-0 7 * * * /path/to/venv/bin/python /path/to/financial_snapshot.py
+0 7 * * * /path/to/venv/bin/python /path/to/financial_snapshot_prod/financial_snapshot.py
 ```
+
+No need to export API keys in the cron entry — the app loads them from `.env` automatically.
 
 ### HTML Output
 
@@ -166,14 +171,14 @@ The application logs to `logs/financial_snapshot_app.log`. Check the logs for AP
 
 ### Common Issues
 
-1. **Missing API Keys**: Ensure all required API keys are set as environment variables
-2. **Email Not Sending**: Check AgentMail API key and inbox ID
+1. **Missing API Keys**: Ensure keys are set in `.env` or as environment variables
+2. **Email Not Sending**: Check `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` in `.env`
 3. **Import Errors**: Make sure you're running from the virtual environment
-4. **Permission Errors**: Ensure write permissions for log files and HTML output directory
+4. **Missing directories**: `logs/`, `data/`, and `html/` are created automatically on first run
 
 ### Test Mode
 
-Always test with `TEST_MODE_SET = True` first to avoid sending emails to production recipients.
+Always test with `TEST_MODE = True` first to avoid sending emails to production recipients.
 
 ## Development
 
