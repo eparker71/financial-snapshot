@@ -4,7 +4,7 @@ A Python application that fetches live financial market data from multiple APIs 
 
 ## Features
 
-- **Cryptocurrency Data**: Bitcoin and Ethereum prices from CoinGecko, Fear & Greed Index from Alternative.me
+- **Cryptocurrency Data**: Bitcoin, Ethereum, Solana, Ripple, and Cardano prices from CoinGecko, Fear & Greed Index from Alternative.me
 - **Energy Prices**: US gas and diesel prices from EIA (Energy Information Administration)
 - **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
@@ -130,7 +130,7 @@ When `HTML_OUTPUT = True` in settings.py, the application saves the generated HT
 
 ### CSV Export
 
-Each run now also appends a flattened data row to `financial_data.csv` in the project root. This file contains timestamped snapshot values for later charting and analytics.
+Each run now also appends a flattened data row to `data/data.csv`. This file contains timestamped snapshot values for later charting and analytics.
 
 ## APIs Used
 
@@ -150,7 +150,7 @@ The email includes sections for:
 
 - **US Markets**: Live indices or futures (depending on market hours)
 - **Volatility**: VIX index
-- **Cryptocurrencies**: BTC, ETH, Fear & Greed Index
+- **Cryptocurrencies**: BTC, ETH, SOL, XRP, ADA, Fear & Greed Index
 - **Energy**: Gas prices, crude oil
 - **Metals**: Gold, silver
 - **Currencies**: USD/JPY, EUR/USD
@@ -160,7 +160,7 @@ The email includes sections for:
 
 ## Logging
 
-The application logs to the file specified in `LOG_FILE` (default: `financial_snapshot.log`). Check the logs for API errors or delivery status.
+The application logs to `logs/financial_snapshot_app.log`. Check the logs for API errors or delivery status.
 
 ## Troubleshooting
 
