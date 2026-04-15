@@ -71,6 +71,7 @@ def main():
     # Crypto
     crypto = fetch_crypto()
     data.update(crypto)
+    print(f"Crypto data: {crypto}") if TEST_MODE else None
 
     # Fear & Greed
     fg_val, fg_label = fetch_fear_greed()

@@ -20,6 +20,9 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
     # Crypto
     btc_pct = data.get("btc_change_pct")
     eth_pct = data.get("eth_change_pct")
+    sol_pct = data.get("sol_change_pct")
+    xrp_pct = data.get("xrp_change_pct")
+    ada_pct = data.get("ada_change_pct")
     fg_val, fg_label = data.get("fear_greed", (None, None))
 
     crypto_rows: List[RowData] = [
@@ -34,6 +37,27 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
             "label": "Ethereum (ETH)",
             "value": fmt_price(data.get("eth_price")),
             "change": f"({'+' if (eth_pct or 0) >= 0 else ''}{eth_pct:.2f}% 24h)" if eth_pct else "",
+            "sub": "",
+            "invert": False,
+        },
+        {
+            "label": "Solana (SOL)",
+            "value": fmt_price(data.get("sol_price")),
+            "change": f"({'+' if (sol_pct or 0) >= 0 else ''}{sol_pct:.2f}% 24h)" if sol_pct else "",
+            "sub": "",
+            "invert": False,
+        },
+        {
+            "label": "Ripple (XRP)",
+            "value": fmt_price(data.get("xrp_price")),
+            "change": f"({'+' if (xrp_pct or 0) >= 0 else ''}{xrp_pct:.2f}% 24h)" if xrp_pct else "",
+            "sub": "",
+            "invert": False,
+        },
+        {
+            "label": "Cardano (ADA)",
+            "value": fmt_price(data.get("ada_price")),
+            "change": f"({'+' if (ada_pct or 0) >= 0 else ''}{ada_pct:.2f}% 24h)" if ada_pct else "",
             "sub": "",
             "invert": False,
         },

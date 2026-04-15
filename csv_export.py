@@ -17,6 +17,12 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["btc_change_pct"] = data.get("btc_change_pct")
     flat["eth_price"] = data.get("eth_price")
     flat["eth_change_pct"] = data.get("eth_change_pct")
+    flat["sol_price"] = data.get("sol_price")
+    flat["sol_change_pct"] = data.get("sol_change_pct")
+    flat["xrp_price"] = data.get("xrp_price")
+    flat["xrp_change_pct"] = data.get("xrp_change_pct")
+    flat["ada_price"] = data.get("ada_price")
+    flat["ada_change_pct"] = data.get("ada_change_pct")
     fg_val, fg_label = data.get("fear_greed", (None, None))
     flat["fear_greed_value"] = fg_val
     flat["fear_greed_label"] = fg_label

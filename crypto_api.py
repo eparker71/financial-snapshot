@@ -13,9 +13,9 @@ def fetch_crypto():
     url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
         "vs_currency": "usd",
-        "ids": "bitcoin,ethereum",
+        "ids": "bitcoin,ethereum,solana,ripple,cardano",  # Fetch top 5 by market cap to ensure we get SOL even if it drops
         "order": "market_cap_desc",
-        "per_page": 2,
+        "per_page": 5,
         "page": 1,
         "sparkline": False,
         "price_change_percentage": "24h",
@@ -26,11 +26,20 @@ def fetch_crypto():
         data = {item["id"]: item for item in r.json()}
         btc  = data.get("bitcoin", {})
         eth  = data.get("ethereum", {})
+        sol  = data.get("solana", {})
+        xrp  = data.get("ripple", {})
+        ada  = data.get("cardano", {})  # In case SOL is missing, we can check ADA as a backup (since it's usually in the top 5)
         return {
             "btc_price":      btc.get("current_price"),
             "btc_change_pct": btc.get("price_change_percentage_24h"),
             "eth_price":      eth.get("current_price"),
             "eth_change_pct": eth.get("price_change_percentage_24h"),
+            "sol_price":      sol.get("current_price"),
+            "sol_change_pct": sol.get("price_change_percentage_24h"),
+            "xrp_price":      xrp.get("current_price"),
+            "xrp_change_pct": xrp.get("price_change_percentage_24h"),
+            "ada_price":      ada.get("current_price"),
+            "ada_change_pct": ada.get("price_change_percentage_24h"),
         }
     except Exception as e:
         log.warning(f"CoinGecko error: {e}")
