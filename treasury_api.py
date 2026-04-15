@@ -24,6 +24,9 @@ def fetch_national_debt():
         r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
         records = r.json()["data"]
+        if len(records) < 2:
+            log.warning("National debt API returned fewer than 2 records")
+            return None, None, None, None
         latest  = float(records[0]["tot_pub_debt_out_amt"])
         prev    = float(records[1]["tot_pub_debt_out_amt"])
         date    = records[0]["record_date"]

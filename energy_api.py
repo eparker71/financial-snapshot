@@ -30,7 +30,11 @@ def _eia_fetch_price(product_code: str) -> tuple:
         try:
             r = requests.get(url, timeout=45)
             r.raise_for_status()
-            row = r.json()["response"]["data"][0]
+            data = r.json()["response"]["data"]
+            if not data:
+                log.warning(f"EIA returned empty data for {product_code}")
+                return None, None
+            row = data[0]
             return float(row["value"]), row["period"]
         except requests.Timeout:
             log.warning(f"EIA timeout attempt {attempt + 1} for {product_code}")

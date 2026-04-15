@@ -31,9 +31,11 @@ EMAIL_TO = [TEST_EMAIL] if TEST_MODE else userEmails
 # Overridden by the LOG_FILE environment variable if set.
 
 LOG_FILE_DIR = os.path.join(ROOT_DIR, "logs")
+os.makedirs(LOG_FILE_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_FILE_DIR, "financial_snapshot_app.log")
 print(f"App Log File: {LOG_FILE}")
 
 DATA_DIR = os.path.join(ROOT_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 CSV_DATA_FILE = os.path.join(DATA_DIR, "data.csv")
 print(f"CSV Data File: {CSV_DATA_FILE}")

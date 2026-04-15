@@ -1,5 +1,6 @@
 """HTML rendering for financial snapshot emails."""
 
+import html as html_lib
 from datetime import datetime
 
 from render_utils import is_market_closed
@@ -12,7 +13,7 @@ def build_html(data: dict, now: datetime, root_url: str) -> str:
     sections = build_snapshot_sections(data, market_closed=market_closed)
 
     def format_row(row: dict) -> str:
-        change_str = row.get("change", "")
+        change_str = html_lib.escape(row.get("change", ""))
         if change_str:
             is_up = change_str.startswith("(+")
             invert = row.get("invert", False)
@@ -20,11 +21,11 @@ def build_html(data: dict, now: datetime, root_url: str) -> str:
             color = "#1a7a1a" if is_good else "#cc0000"
             change_str = f"<span style='color:{color};'>{change_str}</span>"
         chg_html = f"<span class='chg'>{change_str}</span>" if change_str else ""
-        sub_html = f"<span class='sub'>{row.get('sub', '')}</span>" if row.get("sub") else ""
+        sub_html = f"<span class='sub'>{html_lib.escape(row.get('sub', ''))}</span>" if row.get("sub") else ""
         return f"""
         <tr>
-          <td class=\"label\">{row['label']}</td>
-          <td class=\"val\">{row['value']} {chg_html}{sub_html}</td>
+          <td class=\"label\">{html_lib.escape(row['label'])}</td>
+          <td class=\"val\">{html_lib.escape(row['value'])} {chg_html}{sub_html}</td>
         </tr>"""
 
     def section_html(title: str, rows_html: str) -> str:

@@ -102,11 +102,13 @@ def main():
             result = send_email(subject, html, plain, addr)
             log.info(f"Sent to {addr} — message_id: {result.get('id')}")
             print(f"✓ Sent to {addr}")
-        except requests.HTTPError as e:
-            log.error(f"Failed to send to {addr}: {e.response.status_code} {e.response.text}")
+        except requests.RequestException as e:
+            status = e.response.status_code if getattr(e, "response", None) is not None else "N/A"
+            log.error(f"Failed to send to {addr}: {status} {e}")
     
     if CREATE_HTML_OUTPUT_FILE and HTML_OUTPUT_DIR:
         try:
+            os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
             filename = f"{HTML_OUTPUT_DIR}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(html)
