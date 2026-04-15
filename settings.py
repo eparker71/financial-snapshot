@@ -33,3 +33,7 @@ EMAIL_TO = [TEST_EMAIL] if TEST_MODE else userEmails
 LOG_FILE_DIR = os.path.join(ROOT_DIR, "logs")
 LOG_FILE = os.path.join(LOG_FILE_DIR, "financial_snapshot_app.log")
 print(f"App Log File: {LOG_FILE}")
+
+DATA_DIR = os.path.join(ROOT_DIR, "data")
+CSV_DATA_FILE = os.path.join(DATA_DIR, "data.csv")
+print(f"CSV Data File: {CSV_DATA_FILE}")
