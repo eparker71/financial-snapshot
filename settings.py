@@ -10,15 +10,17 @@
 
 from app_secrets import TEST_EMAIL, TEST_MODE
 from csvdb import CsvDB
+import os
 
 db = CsvDB("users.csv")
 userEmails = db.column("Email")
 
 # ── Create HTML output file ──────────────────────────────────────────----──────
-
-HTML_OUTPUT = True  # Set to False to disable saving the HTML output to a file.
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+HTML_OUTPUT_DIR = os.path.join(ROOT_DIR, "html")
+print(f"HTML Output Directory: {HTML_OUTPUT_DIR}")
+CREATE_HTML_OUTPUT_FILE = True  # Set to False to disable saving the HTML output to a file.
 HTML_ROOT_URL   = "https://mktpulse.online" # Base URL where the HTML files will be hosted. Adjust if you host them elsewhere.
-HTML_PATH   = "html"  # Directory where HTML output files will be saved.
 
 # ── Recipients ────────────────────────────────────────────────────────────────
 # Add or remove addresses here. TEST_MODE above overrides this list.
@@ -28,5 +30,6 @@ EMAIL_TO = [TEST_EMAIL] if TEST_MODE else userEmails
 # ── Log file ──────────────────────────────────────────────────────────────────
 # Overridden by the LOG_FILE environment variable if set.
 
-LOG_FILE = "financial_snapshot.log"
-
+LOG_FILE_DIR = os.path.join(ROOT_DIR, "logs")
+LOG_FILE = os.path.join(LOG_FILE_DIR, "financial_snapshot_app.log")
+print(f"App Log File: {LOG_FILE}")

@@ -28,7 +28,7 @@ AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "YOUR_AGENTMAIL_API_KEY
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "YOUR_INBOX_ID")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT, HTML_PATH, HTML_ROOT_URL
+from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL
 #LOG_FILE = os.environ.get("LOG_FILE", LOG_FILE)  # env var still overrides if set
 
 logging.basicConfig(
@@ -105,9 +105,9 @@ def main():
         except requests.HTTPError as e:
             log.error(f"Failed to send to {addr}: {e.response.status_code} {e.response.text}")
     
-    if HTML_OUTPUT:
+    if CREATE_HTML_OUTPUT_FILE and HTML_OUTPUT_DIR:
         try:
-            filename = f"{HTML_PATH}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            filename = f"{HTML_OUTPUT_DIR}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(html)
                 log.info(f"Saved HTML output to {filename}")

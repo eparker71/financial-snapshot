@@ -1,25 +1,25 @@
+# Directory and file patterns to ignore in version control
+
+# Directories
 .DS_Store
 .claude/
 backups/
 testing/
 venv/
-
-# do not commit html files from dev 
 html/
-
 __pycache__/
+
+# Specific files
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+secrets.py
+app_secrets.py
+
+# File types
 *.py[cod]
 *.log
 *.sh
-
-# do not commit secrets
-secrets.py
-app_secrets.py
 *.csv
 *.bak
 *.html
-
-
