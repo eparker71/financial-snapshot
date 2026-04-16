@@ -10,7 +10,7 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail
-- **CSV Export**: Saves a row of snapshot data to `data/data.csv` for later charting
+- **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
 ## Project Structure
@@ -30,12 +30,10 @@ financial_snapshot.py     # Main application orchestrator
 ├── treasury_api.py       # US Treasury debt API
 ├── yahoo_api.py          # Yahoo Finance API
 ├── settings.py           # Configuration settings
-├── models.py             # SQLite user model (Peewee ORM)
-├── migrate_users.py      # One-time CSV → SQLite migration script
+├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
 ├── .env                  # Secret API keys (never committed)
 ├── .env.example          # Template showing required keys
 ├── db.sqlite3            # SQLite database (never committed)
-├── data/                 # CSV snapshot data (auto-created)
 ├── logs/                 # Application logs (auto-created)
 └── html/                 # HTML output (auto-created)
 ```
@@ -108,11 +106,6 @@ User.create(first_name='Jane', last_name='Doe', email='jane@example.com', format
 "
 ```
 
-If you are migrating from a `users.csv` file, run the included migration script once:
-
-```bash
-python migrate_users.py
-```
 
 ## Configuration
 
@@ -125,7 +118,6 @@ Contains non-sensitive configuration:
 - `CREATE_HTML_OUTPUT_FILE`: Whether to save HTML output to file
 - `HTML_ROOT_URL`: Base URL where archived HTML snapshots are hosted
 - `LOG_FILE`: Path to log file (`logs/financial_snapshot_app.log`)
-- `CSV_DATA_FILE`: Path to snapshot data CSV (`data/data.csv`)
 
 ### Managing Users
 
@@ -178,9 +170,13 @@ No need to export API keys in the cron entry — the app loads them from `.env` 
 
 When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
 
-### CSV Export
+### Snapshot Storage
 
-Each run now also appends a flattened data row to `data/data.csv`. This file contains timestamped snapshot values for later charting and analytics.
+Each run saves a full row of market data to the `snapshots` table in `db.sqlite3`. You can query historical data directly:
+
+```bash
+sqlite3 db.sqlite3 "SELECT timestamp, btc_price, gspc_price FROM snapshots ORDER BY timestamp DESC LIMIT 5;"
+```
 
 ## APIs Used
 
@@ -219,7 +215,7 @@ The application logs to `logs/financial_snapshot_app.log`. Check the logs for AP
 1. **Missing API Keys**: Ensure keys are set in `.env` or as environment variables
 2. **Email Not Sending**: Check `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` in `.env`
 3. **Import Errors**: Make sure you're running from the virtual environment
-4. **Missing directories**: `logs/`, `data/`, and `html/` are created automatically on first run
+4. **Missing directories**: `logs/` and `html/` are created automatically on first run
 
 ### Test Mode
 
