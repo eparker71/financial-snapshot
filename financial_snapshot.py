@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 load_dotenv()  # loads .env into os.environ if present; existing env vars take priority
 
-from csv_export import save_to_csv
+from csv_export import save_to_db
 from html_builder import build_html
 from plain_text_builder import build_plain
 
@@ -31,7 +31,7 @@ AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "")
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL, CSV_DATA_FILE
+from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -121,8 +121,8 @@ def main():
             log.error(f"Failed to write HTML file: {e}")
             print(f"✗ Failed to save HTML output: {e}")
     
-    # Save data to CSV
-    save_to_csv(data, now, CSV_DATA_FILE)
+    # Save snapshot to database
+    save_to_db(data, now)
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,11 @@
-"""CSV export helper for financial snapshot data."""
+"""Export helpers for financial snapshot data."""
 
 import csv
 import logging
 import os
 from datetime import datetime
+
+from models import Snapshot
 
 log = logging.getLogger(__name__)
 
@@ -151,6 +153,19 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["gdp_growth_date"] = gdp_growth_date
 
     return flat
+
+
+def save_to_db(data: dict, timestamp: datetime):
+    """Save the flattened snapshot data to SQLite."""
+    flat = flatten_data_for_csv(data, timestamp)
+    flat["timestamp"] = timestamp  # use datetime object, not isoformat string
+    try:
+        Snapshot.create(**flat)
+        log.info("Saved snapshot to database")
+        print("✓ Saved snapshot to database")
+    except Exception as e:
+        log.error(f"Failed to save snapshot to database: {e}")
+        print(f"✗ Failed to save snapshot to database: {e}")
 
 
 def save_to_csv(data: dict, timestamp: datetime, csv_file: str = "financial_data.csv"):
