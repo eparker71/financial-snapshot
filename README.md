@@ -10,6 +10,7 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail
+- **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox
 - **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
@@ -31,6 +32,9 @@ financial_snapshot.py     # Main application orchestrator
 ├── yahoo_api.py          # Yahoo Finance API
 ├── settings.py           # Configuration settings
 ├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
+├── webhook_server.py     # Flask server for inbound email signups
+├── register_webhook.py   # One-time script to register webhook with AgentMail
+├── financial-snapshot-webhook.service  # systemd unit for webhook server
 ├── .env                  # Secret API keys (never committed)
 ├── .env.example          # Template showing required keys
 ├── db.sqlite3            # SQLite database (never committed)
@@ -76,6 +80,13 @@ FRED_API_KEY=your_fred_key
 ```
 
 The app loads `.env` automatically at startup via `python-dotenv`. The `.env` file is excluded from git. If the keys are already set as environment variables (e.g. in CI or a cron environment), those take priority over `.env`.
+
+If you are using the webhook server for self-service signups, also add:
+
+```bash
+WEBHOOK_SECRET=choose_a_random_secret_string
+WEBHOOK_PORT=5000
+```
 
 ### 3. Email Configuration
 
@@ -166,6 +177,30 @@ Set up a cron job to run daily (example for 7 AM ET):
 
 No need to export API keys in the cron entry — the app loads them from `.env` automatically.
 
+### Webhook Server (Self-Service Signups)
+
+The webhook server allows users to subscribe or unsubscribe by sending an email to your AgentMail inbox.
+
+**Deploy on Ubuntu:**
+
+```bash
+# Install the systemd service
+sudo cp financial-snapshot-webhook.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable financial-snapshot-webhook
+sudo systemctl start financial-snapshot-webhook
+
+# Register the webhook URL with AgentMail (once)
+python register_webhook.py http://YOUR_SERVER_IP:5000/webhook
+
+# Check the server is running
+curl http://localhost:5000/health
+```
+
+**How it works:**
+- User sends an email to your AgentMail inbox with **"subscribe"** in the subject → added to the database, confirmation email sent
+- User sends an email with **"unsubscribe"** in the subject → deactivated in the database, confirmation email sent
+
 ### HTML Output
 
 When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
@@ -216,6 +251,7 @@ The application logs to `logs/financial_snapshot_app.log`. Check the logs for AP
 2. **Email Not Sending**: Check `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` in `.env`
 3. **Import Errors**: Make sure you're running from the virtual environment
 4. **Missing directories**: `logs/` and `html/` are created automatically on first run
+5. **Webhook not receiving events**: Ensure port 5000 is open in your server's firewall (`sudo ufw allow 5000`) and the webhook is registered with the correct public IP
 
 ### Test Mode
 
