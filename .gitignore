@@ -7,7 +7,6 @@ backups/
 testing/
 venv/
 html/
-data/
 logs/
 __pycache__/
 

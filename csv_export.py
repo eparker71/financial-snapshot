@@ -1,8 +1,6 @@
 """Export helpers for financial snapshot data."""
 
-import csv
 import logging
-import os
 from datetime import datetime
 
 from models import Snapshot
@@ -168,19 +166,3 @@ def save_to_db(data: dict, timestamp: datetime):
         print(f"✗ Failed to save snapshot to database: {e}")
 
 
-def save_to_csv(data: dict, timestamp: datetime, csv_file: str = "financial_data.csv"):
-    """Save the flattened data to a CSV file."""
-    flat_data = flatten_data_for_csv(data, timestamp)
-    file_exists = os.path.isfile(csv_file)
-
-    try:
-        with open(csv_file, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=flat_data.keys())
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(flat_data)
-        log.info(f"Saved data to CSV: {csv_file}")
-        print(f"✓ Saved data to CSV: {csv_file}")
-    except OSError as e:
-        log.error(f"Failed to write CSV file: {e}")
-        print(f"✗ Failed to save CSV data: {e}")
