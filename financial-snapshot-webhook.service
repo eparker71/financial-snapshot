@@ -1,0 +1,13 @@
+[Unit]
+Description=Financial Snapshot Webhook Server
+After=network.target
+
+[Service]
+User=eparker
+WorkingDirectory=/home/eparker/applications/Financial-Snapshot
+ExecStart=/home/eparker/applications/Financial-Snapshot/venv/bin/python webhook_server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
