@@ -197,6 +197,27 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
     rut_p, rut_c, rut_pct = data.get("rut", (None, None, None))
     vix_p, vix_c, vix_pct = data.get("vix", (None, None, None))
 
+    # Magnificent 7
+    mag7_stocks = [
+        ("Apple (AAPL)",    "aapl"),
+        ("Microsoft (MSFT)", "msft"),
+        ("Amazon (AMZN)",   "amzn"),
+        ("Alphabet (GOOGL)", "googl"),
+        ("Meta (META)",     "meta"),
+        ("Tesla (TSLA)",    "tsla"),
+        ("Nvidia (NVDA)",   "nvda"),
+    ]
+    mag7_rows: List[RowData] = []
+    for label, key in mag7_stocks:
+        p, c, pct = data.get(key, (None, None, None))
+        mag7_rows.append({
+            "label": label,
+            "value": fmt_price(p, 2),
+            "change": fmt_change(c, pct),
+            "sub": "",
+            "invert": False,
+        })
+
     if market_closed:
         futures_rows: List[RowData] = [
             {
@@ -229,6 +250,7 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
             },
         ]
         sections.insert(0, {"title": "📈 US Market Futures", "rows": futures_rows})
+        sections.insert(1, {"title": "💎 Magnificent 7", "rows": mag7_rows})
     else:
         index_rows: List[RowData] = [
             {
@@ -270,6 +292,7 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
                 "invert": True,
             }
         ]})
+        sections.insert(2, {"title": "💎 Magnificent 7", "rows": mag7_rows})
 
     # Consumer Prices
     eggs_val, eggs_mom, eggs_date = data.get("ev_eggs", (None, None, None))

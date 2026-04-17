@@ -113,6 +113,29 @@ class Snapshot(BaseModel):
     vix_change     = FloatField(null=True)
     vix_change_pct = FloatField(null=True)
 
+    # Magnificent 7
+    aapl_price       = FloatField(null=True)
+    aapl_change      = FloatField(null=True)
+    aapl_change_pct  = FloatField(null=True)
+    msft_price       = FloatField(null=True)
+    msft_change      = FloatField(null=True)
+    msft_change_pct  = FloatField(null=True)
+    amzn_price       = FloatField(null=True)
+    amzn_change      = FloatField(null=True)
+    amzn_change_pct  = FloatField(null=True)
+    googl_price      = FloatField(null=True)
+    googl_change     = FloatField(null=True)
+    googl_change_pct = FloatField(null=True)
+    meta_price       = FloatField(null=True)
+    meta_change      = FloatField(null=True)
+    meta_change_pct  = FloatField(null=True)
+    tsla_price       = FloatField(null=True)
+    tsla_change      = FloatField(null=True)
+    tsla_change_pct  = FloatField(null=True)
+    nvda_price       = FloatField(null=True)
+    nvda_change      = FloatField(null=True)
+    nvda_change_pct  = FloatField(null=True)
+
     # Consumer Prices
     eggs_price      = FloatField(null=True)
     eggs_mom_change = FloatField(null=True)
@@ -144,7 +167,26 @@ class Snapshot(BaseModel):
         table_name = "snapshots"
 
 
+def _migrate_add_columns():
+    """Add new columns to the snapshots table if they don't exist yet."""
+    cursor = db.execute_sql("PRAGMA table_info(snapshots)")
+    existing = {row[1] for row in cursor.fetchall()}
+    new_cols = [
+        ("aapl_price", "REAL"), ("aapl_change", "REAL"), ("aapl_change_pct", "REAL"),
+        ("msft_price", "REAL"), ("msft_change", "REAL"), ("msft_change_pct", "REAL"),
+        ("amzn_price", "REAL"), ("amzn_change", "REAL"), ("amzn_change_pct", "REAL"),
+        ("googl_price", "REAL"), ("googl_change", "REAL"), ("googl_change_pct", "REAL"),
+        ("meta_price", "REAL"), ("meta_change", "REAL"), ("meta_change_pct", "REAL"),
+        ("tsla_price", "REAL"), ("tsla_change", "REAL"), ("tsla_change_pct", "REAL"),
+        ("nvda_price", "REAL"), ("nvda_change", "REAL"), ("nvda_change_pct", "REAL"),
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing:
+            db.execute_sql(f"ALTER TABLE snapshots ADD COLUMN {col_name} {col_type}")
+
+
 def init_db():
     """Create tables if they don't exist. Safe to call on every startup."""
     with db:
         db.create_tables([User, Snapshot], safe=True)
+        _migrate_add_columns()

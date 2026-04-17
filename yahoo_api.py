@@ -48,6 +48,14 @@ def fetch_yahoo_data():
         "ndx":     "^NDX",
         "rut":     "^RUT",
         "vix":     "^VIX",
+        # Magnificent 7
+        "aapl":  "AAPL",
+        "msft":  "MSFT",
+        "amzn":  "AMZN",
+        "googl": "GOOGL",
+        "meta":  "META",
+        "tsla":  "TSLA",
+        "nvda":  "NVDA",
     }
 
     data = {}

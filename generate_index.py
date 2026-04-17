@@ -227,6 +227,16 @@ def render_html(snap, news, entries):
             dr("VIX",          fv(snap.vix_price, 2, ""), fc(snap.vix_change_pct), invert=True, live_key="vix") if snap.vix_price else "",
         )
 
+        cards_html += card("Magnificent 7", "💎",
+            dr("Apple (AAPL)",    fv(snap.aapl_price),  fc(snap.aapl_change_pct))  if snap.aapl_price  else "",
+            dr("Microsoft (MSFT)", fv(snap.msft_price), fc(snap.msft_change_pct))  if snap.msft_price  else "",
+            dr("Amazon (AMZN)",   fv(snap.amzn_price),  fc(snap.amzn_change_pct))  if snap.amzn_price  else "",
+            dr("Alphabet (GOOGL)", fv(snap.googl_price), fc(snap.googl_change_pct)) if snap.googl_price else "",
+            dr("Meta (META)",     fv(snap.meta_price),  fc(snap.meta_change_pct))  if snap.meta_price  else "",
+            dr("Tesla (TSLA)",    fv(snap.tsla_price),  fc(snap.tsla_change_pct))  if snap.tsla_price  else "",
+            dr("Nvidia (NVDA)",   fv(snap.nvda_price),  fc(snap.nvda_change_pct))  if snap.nvda_price  else "",
+        )
+
         fg_row = (dr("Fear & Greed", f"{int(snap.fear_greed_value)} – {snap.fear_greed_label or ''}", live_key="fear_greed")
                   if snap.fear_greed_value is not None else "")
         cards_html += card("Crypto", "🪙",

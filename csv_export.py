@@ -115,6 +115,13 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["vix_change"] = vix_c
     flat["vix_change_pct"] = vix_pct
 
+    # Magnificent 7
+    for ticker in ("aapl", "msft", "amzn", "googl", "meta", "tsla", "nvda"):
+        p, c, pct = data.get(ticker, (None, None, None))
+        flat[f"{ticker}_price"] = p
+        flat[f"{ticker}_change"] = c
+        flat[f"{ticker}_change_pct"] = pct
+
     # Consumer Prices
     eggs_val, eggs_mom, eggs_date = data.get("ev_eggs", (None, None, None))
     flat["eggs_price"] = eggs_val
