@@ -125,6 +125,10 @@ Unemployment: {_v(unemp)}%
             ],
         )
         raw = response.content[0].text.strip()
+        # Strip markdown code fences if the model wraps the JSON anyway
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]  # drop the opening ```json line
+            raw = raw.rsplit("```", 1)[0].strip()
         parsed = json.loads(raw)
         result = {
             "analysis": (parsed.get("briefing") or "").strip() or None,
@@ -132,11 +136,11 @@ Unemployment: {_v(unemp)}%
             "watch":    (parsed.get("watch")    or "").strip() or None,
         }
         log.info("AI content generated successfully")
-        print("✓ AI content generated")
+        print(f"✓ AI content generated — subject: {result['subject']!r}")
         return result
     except (ValueError, KeyError) as e:
         log.warning(f"AI content JSON parse failed: {e} — raw: {raw[:200]}")
-        print(f"⚠  AI content parse failed: {e}")
+        print(f"⚠  AI content parse failed: {e} — raw: {raw[:200]}")
         return fallback
     except Exception as e:
         log.warning(f"AI content failed: {e}")
@@ -205,6 +209,7 @@ def main():
     # Build content — use AI subject when available, fall back to static
     ai_subject = ai["subject"] or f"Market Pulse — {now.strftime('%b %-d, %Y')}"
     subject = f"{'[TEST] ' if TEST_MODE else ''}📊 {ai_subject}"
+    print(f"  Subject: {subject}")
 
     def unsubscribe_url(addr: str) -> str:
         if WEBHOOK_BASE_URL and WEBHOOK_SECRET:
