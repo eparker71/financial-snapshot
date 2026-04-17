@@ -157,6 +157,9 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["gdp_growth_prev"] = gdp_growth_prev
     flat["gdp_growth_date"] = gdp_growth_date
 
+    # AI Analysis
+    flat["ai_analysis"] = data.get("ai_analysis")
+
     return flat
 
 

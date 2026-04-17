@@ -4,7 +4,7 @@ Uses SQLite via Peewee ORM. Database file: db.sqlite3
 """
 
 import os
-from peewee import SqliteDatabase, Model, CharField, BooleanField, FloatField, DateTimeField
+from peewee import SqliteDatabase, Model, CharField, BooleanField, FloatField, DateTimeField, TextField
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 db = SqliteDatabase(os.path.join(ROOT_DIR, "db.sqlite3"))
@@ -163,6 +163,9 @@ class Snapshot(BaseModel):
     gdp_growth_prev  = FloatField(null=True)
     gdp_growth_date  = CharField(null=True)
 
+    # AI Analysis
+    ai_analysis = TextField(null=True)
+
     class Meta:
         table_name = "snapshots"
 
@@ -179,6 +182,7 @@ def _migrate_add_columns():
         ("meta_price", "REAL"), ("meta_change", "REAL"), ("meta_change_pct", "REAL"),
         ("tsla_price", "REAL"), ("tsla_change", "REAL"), ("tsla_change_pct", "REAL"),
         ("nvda_price", "REAL"), ("nvda_change", "REAL"), ("nvda_change_pct", "REAL"),
+        ("ai_analysis", "TEXT"),
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing:

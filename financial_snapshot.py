@@ -41,6 +41,85 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+# ── AI Market Analysis ────────────────────────────────────────────────────────
+
+def generate_market_analysis(data: dict) -> str | None:
+    """Generate a brief AI market analysis using Claude Haiku (low cost)."""
+    if not ANTHROPIC_API_KEY:
+        log.warning("ANTHROPIC_API_KEY not set — skipping AI analysis")
+        return None
+    try:
+        import anthropic
+
+        # Build a compact market summary to pass as context
+        def _v(val, fmt=".2f"):
+            return f"{val:{fmt}}" if val is not None else "N/A"
+
+        sp_p  = data.get("gspc", (None,))[0] or data.get("sp500", (None,))[0]
+        sp_c  = (data.get("gspc") or (None, None, None))[2] or (data.get("sp500") or (None, None, None))[2]
+        dj_p  = data.get("dji",  (None,))[0] or data.get("dow",  (None,))[0]
+        dj_c  = (data.get("dji")  or (None, None, None))[2] or (data.get("dow")  or (None, None, None))[2]
+        nq_p  = data.get("ndx",  (None,))[0] or data.get("nasdaq", (None,))[0]
+        nq_c  = (data.get("ndx")  or (None, None, None))[2] or (data.get("nasdaq") or (None, None, None))[2]
+
+        fg_val, fg_lbl = data.get("fear_greed", (None, None))
+        btc_p,  btc_c  = data.get("btc_price"), data.get("btc_change_pct")
+        oil_p  = (data.get("oil")    or (None, None, None))[0]
+        oil_c  = (data.get("oil")    or (None, None, None))[2]
+        gold_p = (data.get("gold")   or (None, None, None))[0]
+        t10y_p = (data.get("t10y")   or (None, None, None))[0]
+        vix_p  = (data.get("vix")    or (None, None, None))[0]
+        cpi    = (data.get("ev_cpi_all") or (None, None))
+        unemp  = (data.get("ev_unemployment") or (None, None, None))[0]
+
+        market_summary = f"""
+S&P 500: {_v(sp_p, ",.0f")} ({_v(sp_c, "+.2f")}%)
+Dow Jones: {_v(dj_p, ",.0f")} ({_v(dj_c, "+.2f")}%)
+Nasdaq 100: {_v(nq_p, ",.0f")} ({_v(nq_c, "+.2f")}%)
+VIX: {_v(vix_p)}
+Fear & Greed Index: {_v(fg_val, ".0f")} ({fg_lbl or "N/A"})
+Bitcoin: ${_v(btc_p, ",.0f")} ({_v(btc_c, "+.2f")}%)
+Crude Oil (WTI): ${_v(oil_p)} ({_v(oil_c, "+.2f")}%)
+Gold: ${_v(gold_p, ",.0f")}
+10-Yr Treasury Yield: {_v(t10y_p)}%
+CPI (YoY): {_v(cpi[0] if cpi else None)}%
+Unemployment: {_v(unemp)}%
+""".strip()
+
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=400,
+            system=[
+                {
+                    "type": "text",
+                    "text": (
+                        "You are a concise financial market analyst. Given a snapshot of today's key market "
+                        "data, write a brief 3–4 sentence market overview suitable for a morning briefing. "
+                        "Highlight the most notable moves, trends, or tensions. Be factual and neutral. "
+                        "Do not use bullet points — write in flowing prose. Do not include disclaimers."
+                    ),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Here is today's market data:\n\n{market_summary}\n\nWrite the morning briefing.",
+                }
+            ],
+        )
+        analysis = response.content[0].text.strip()
+        log.info("AI analysis generated successfully")
+        print("✓ AI analysis generated")
+        return analysis
+    except Exception as e:
+        log.warning(f"AI analysis failed: {e}")
+        print(f"⚠  AI analysis skipped: {e}")
+        return None
+
 ET = ZoneInfo("America/New_York")
 
 if TEST_MODE:
@@ -94,6 +173,9 @@ def main():
     # Yahoo Finance data
     yahoo_data = fetch_yahoo_data()
     data.update(yahoo_data)
+
+    # AI market analysis (Claude Haiku — low cost)
+    data["ai_analysis"] = generate_market_analysis(data)
 
     # Build content
     subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Market Pulse — {now.strftime('%b %-d, %Y')}"

@@ -386,6 +386,16 @@ def render_html(snap, news, entries, firm_insights=None):
 
     heroes_html = "\n".join(heroes)
 
+    # ── AI Analysis card ──────────────────────────────────────────────────────
+    ai_analysis_html = ""
+    if snap and getattr(snap, "ai_analysis", None):
+        ai_analysis_html = (
+            f'<div class="ai-card">'
+            f'<div class="ai-hd">AI Morning Briefing</div>'
+            f'<div class="ai-body">{html_lib.escape(snap.ai_analysis)}</div>'
+            f'</div>'
+        )
+
     # ── Data cards ────────────────────────────────────────────────────────────
     cards_html = ""
     if snap:
@@ -678,6 +688,26 @@ def render_html(snap, news, entries, firm_insights=None):
     .nc-source {{ font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }}
     .nc-title  {{ font-size: 14px; color: var(--t1); line-height: 1.4; }}
 
+    /* ── AI Analysis ───────────────────────────────── */
+    .ai-card {{
+      background: linear-gradient(135deg, rgba(56,139,253,0.08) 0%, rgba(56,139,253,0.03) 100%);
+      border: 1px solid rgba(56,139,253,0.25);
+      border-radius: var(--r); padding: 20px 24px;
+      margin-bottom: 40px;
+    }}
+    .ai-hd {{
+      font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }}
+    .ai-hd::after {{
+      content: ''; flex: 1; height: 1px;
+      background: rgba(56,139,253,0.2);
+    }}
+    .ai-body {{
+      font-size: 14px; color: var(--t1); line-height: 1.65;
+    }}
+
     /* ── Firm Insights ──────────────────────────────── */
     .fi-grid {{
       display: grid;
@@ -783,6 +813,8 @@ def render_html(snap, news, entries, firm_insights=None):
 </header>
 
 <div class="page">
+
+  {ai_analysis_html}
 
   <div class="hero-strip">
     {heroes_html}
