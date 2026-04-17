@@ -34,7 +34,8 @@ financial_snapshot.py     # Main application orchestrator
 ├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
 ├── webhook_server.py     # Flask server for inbound email signups
 ├── register_webhook.py   # One-time script to register webhook with AgentMail
-├── financial-snapshot-webhook.service  # systemd unit for webhook server
+├── financial-snapshot-webhook.service  # systemd unit for webhook server (Gunicorn)
+├── nginx-webhook.conf    # Nginx reverse proxy config snippet
 ├── .env                  # Secret API keys (never committed)
 ├── .env.example          # Template showing required keys
 ├── db.sqlite3            # SQLite database (never committed)
@@ -181,20 +182,29 @@ No need to export API keys in the cron entry — the app loads them from `.env` 
 
 The webhook server allows users to subscribe or unsubscribe by sending an email to your AgentMail inbox.
 
-**Deploy on Ubuntu:**
+**Deploy on Ubuntu (Gunicorn + Nginx):**
 
 ```bash
-# Install the systemd service
+# 1. Create the logs directory
+mkdir -p ~/applications/Financial-Snapshot/logs
+
+# 2. Install and start the systemd service (runs Gunicorn on 127.0.0.1:5000)
 sudo cp financial-snapshot-webhook.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable financial-snapshot-webhook
 sudo systemctl start financial-snapshot-webhook
 
-# Register the webhook URL with AgentMail (once)
-python register_webhook.py http://YOUR_SERVER_IP:5000/webhook
+# 3. Add the Nginx reverse proxy — copy the relevant block from nginx-webhook.conf
+#    into your existing server block, then reload Nginx
+sudo nginx -t && sudo systemctl reload nginx
 
-# Check the server is running
-curl http://localhost:5000/health
+# 4. Register the webhook URL with AgentMail (once)
+#    Include the token query param matching WEBHOOK_SECRET in your .env
+python register_webhook.py https://yourdomain.com/webhook?token=YOUR_WEBHOOK_SECRET
+
+# 5. Verify
+curl http://localhost:5000/health       # direct Gunicorn check
+curl https://yourdomain.com/health      # through Nginx
 ```
 
 **How it works:**
@@ -251,7 +261,7 @@ The application logs to `logs/financial_snapshot_app.log`. Check the logs for AP
 2. **Email Not Sending**: Check `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` in `.env`
 3. **Import Errors**: Make sure you're running from the virtual environment
 4. **Missing directories**: `logs/` and `html/` are created automatically on first run
-5. **Webhook not receiving events**: Ensure port 5000 is open in your server's firewall (`sudo ufw allow 5000`) and the webhook is registered with the correct public IP
+5. **Webhook not receiving events**: Ensure Nginx is running and the reverse proxy config is in place. Port 5000 should remain closed to the public — Nginx proxies to it internally. Verify with `curl http://localhost:5000/health` on the server.
 
 ### Test Mode
 
