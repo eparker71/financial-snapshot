@@ -27,8 +27,9 @@ APP_TITLE       = "Financial Snapshot"
 NEWS_FEEDS = [
     ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
     ("CNBC Markets",  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+    ("Investopedia",   "https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline"),
 ]
-MAX_NEWS = 6
+MAX_NEWS = 12 
 # ───────────────────────────────────────────────────────────────────────────────
 
 
