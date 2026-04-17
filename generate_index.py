@@ -59,6 +59,12 @@ FIRM_INSIGHT_SOURCES = [
         "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
         "base_url": "",
     },
+    {
+        "name": "On Watch by MarketWatch",
+        "type": "rss",
+        "url": "https://feeds.megaphone.fm/WSJ6764429165",
+        "base_url": "",
+    },
 ]
 # ───────────────────────────────────────────────────────────────────────────────
 
@@ -144,15 +150,20 @@ def _scrape_articles(url, base_url, max_items):
 
 
 def _rss_articles(url, max_items):
-    """Fetch articles from an RSS feed."""
+    """Fetch articles from an RSS feed. Falls back to channel link for podcast feeds."""
     headers = {"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"}
     r = requests.get(url, timeout=10, headers=headers)
     r.raise_for_status()
     root = ET.fromstring(r.content)
+    channel_link = (root.findtext(".//channel/link") or "").strip()
     articles = []
     for item in root.findall(".//item"):
         title = (item.findtext("title") or "").strip()
         link  = (item.findtext("link")  or "").strip()
+        guid  = (item.findtext("guid")  or "").strip()
+        # Use guid if it looks like a URL, otherwise fall back to channel link
+        if not link:
+            link = guid if guid.startswith("http") else channel_link
         if title and link:
             articles.append({"title": title[:120], "link": link})
         if len(articles) >= max_items:
