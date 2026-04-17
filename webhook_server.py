@@ -13,13 +13,18 @@ Run via systemd: see financial-snapshot-webhook.service
 import logging
 import os
 import re
+import time
+from datetime import datetime
 from email.utils import parseaddr
+from threading import Lock
 
 import requests
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 
 from models import User, init_db
+from yahoo_api import fetch_yahoo_data
+from crypto_api import fetch_crypto, fetch_fear_greed
 
 load_dotenv()
 
@@ -130,6 +135,113 @@ def unsubscribe(email: str):
 
 
 # ── Webhook endpoint ──────────────────────────────────────────────────────────
+
+# ── Live data API ─────────────────────────────────────────────────────────────
+
+_live_cache: dict = {"data": None, "ts": 0.0}
+_live_lock = Lock()
+CACHE_TTL = 60  # seconds
+
+
+def _fmt(val, decimals=2, prefix="$", suffix="", invert=False, chg_pct=None):
+    """Return a dict {price, change, cls} ready for JSON."""
+    if val is None:
+        return {"price": "—", "change": "", "cls": "neu"}
+    price_str = (f"{prefix}{val:,.{decimals}f}{suffix}"
+                 if val >= 1000 else f"{prefix}{val:.{decimals}f}{suffix}")
+    chg_str, cls = "", "neu"
+    if chg_pct is not None:
+        chg_str = f"{'+' if chg_pct >= 0 else ''}{chg_pct:.2f}%"
+        is_up = chg_pct >= 0
+        good  = (is_up and not invert) or (not is_up and invert)
+        cls   = "up" if good else "dn"
+    return {"price": price_str, "change": chg_str, "cls": cls}
+
+
+def _fetch_live_data() -> dict:
+    result: dict = {}
+
+    try:
+        yahoo = fetch_yahoo_data()
+        sp_p,  sp_c,  sp_pct  = yahoo.get("gspc",    (None, None, None))
+        if sp_p  is None: sp_p,  sp_c,  sp_pct  = yahoo.get("sp500",   (None, None, None))
+        dj_p,  dj_c,  dj_pct  = yahoo.get("dji",     (None, None, None))
+        if dj_p  is None: dj_p,  dj_c,  dj_pct  = yahoo.get("dow",     (None, None, None))
+        nq_p,  nq_c,  nq_pct  = yahoo.get("ndx",     (None, None, None))
+        if nq_p  is None: nq_p,  nq_c,  nq_pct  = yahoo.get("nasdaq",  (None, None, None))
+        rut_p, rut_c, rut_pct = yahoo.get("rut",     (None, None, None))
+        if rut_p is None: rut_p, rut_c, rut_pct = yahoo.get("russell", (None, None, None))
+
+        vix_p,   vix_c,   vix_pct   = yahoo.get("vix",    (None, None, None))
+        gold_p,  gold_c,  gold_pct  = yahoo.get("gold",   (None, None, None))
+        silv_p,  silv_c,  silv_pct  = yahoo.get("silver", (None, None, None))
+        oil_p,   oil_c,   oil_pct   = yahoo.get("oil",    (None, None, None))
+        eur_p,   eur_c,   eur_pct   = yahoo.get("eurusd", (None, None, None))
+        jpy_p,   jpy_c,   jpy_pct   = yahoo.get("usdjpy", (None, None, None))
+        t2_p,    t2_c,    t2_pct    = yahoo.get("t2y",    (None, None, None))
+        t10_p,   t10_c,   t10_pct   = yahoo.get("t10y",   (None, None, None))
+
+        result["sp500"]   = _fmt(sp_p,  chg_pct=sp_pct)
+        result["dow"]     = _fmt(dj_p,  chg_pct=dj_pct)
+        result["nasdaq"]  = _fmt(nq_p,  chg_pct=nq_pct)
+        result["russell"] = _fmt(rut_p, chg_pct=rut_pct)
+        result["vix"]     = _fmt(vix_p,  decimals=2, prefix="",  chg_pct=vix_pct,  invert=True)
+        result["gold"]    = _fmt(gold_p, chg_pct=gold_pct)
+        result["silver"]  = _fmt(silv_p, chg_pct=silv_pct)
+        result["oil"]     = _fmt(oil_p,  chg_pct=oil_pct)
+        result["eurusd"]  = _fmt(eur_p,  decimals=4, prefix="",  chg_pct=eur_pct)
+        result["usdjpy"]  = _fmt(jpy_p,  decimals=2, prefix="¥", chg_pct=jpy_pct)
+        result["t2y"]     = _fmt(t2_p,   decimals=3, prefix="",  suffix="%", chg_pct=t2_pct,  invert=True)
+        result["t10y"]    = _fmt(t10_p,  decimals=3, prefix="",  suffix="%", chg_pct=t10_pct, invert=True)
+    except Exception as e:
+        log.error(f"Live data — Yahoo fetch error: {e}")
+
+    try:
+        crypto = fetch_crypto()
+        result["btc"] = _fmt(crypto.get("btc_price"), decimals=0, chg_pct=crypto.get("btc_change_pct"))
+        result["eth"] = _fmt(crypto.get("eth_price"), chg_pct=crypto.get("eth_change_pct"))
+        result["sol"] = _fmt(crypto.get("sol_price"), chg_pct=crypto.get("sol_change_pct"))
+        result["xrp"] = _fmt(crypto.get("xrp_price"), decimals=4, chg_pct=crypto.get("xrp_change_pct"))
+        result["ada"] = _fmt(crypto.get("ada_price"), decimals=4, chg_pct=crypto.get("ada_change_pct"))
+    except Exception as e:
+        log.error(f"Live data — crypto fetch error: {e}")
+
+    try:
+        fg_val, fg_lbl = fetch_fear_greed()
+        if fg_val is not None:
+            fg = int(fg_val)
+            result["fear_greed"] = {
+                "price":  str(fg),
+                "change": fg_lbl or "",
+                "cls":    "up" if fg >= 50 else "dn",
+            }
+    except Exception as e:
+        log.error(f"Live data — fear/greed fetch error: {e}")
+
+    result["updated_at"] = datetime.now().strftime("%-I:%M:%S %p")
+    return result
+
+
+@app.route("/api/live", methods=["GET"])
+def api_live():
+    now = time.time()
+    with _live_lock:
+        if _live_cache["data"] and (now - _live_cache["ts"]) < CACHE_TTL:
+            return jsonify(_live_cache["data"])
+
+    try:
+        data = _fetch_live_data()
+        with _live_lock:
+            _live_cache["data"] = data
+            _live_cache["ts"] = time.time()
+        return jsonify(data)
+    except Exception as e:
+        log.error(f"api_live error: {e}")
+        with _live_lock:
+            if _live_cache["data"]:
+                return jsonify(_live_cache["data"])
+        return jsonify({"error": "data unavailable"}), 503
+
 
 @app.route("/subscribe", methods=["POST"])
 def subscribe_form():
