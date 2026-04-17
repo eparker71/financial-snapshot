@@ -1,17 +1,19 @@
-# Financial Snapshot Emailer
+# Market Pulse
 
-A Python application that fetches live financial market data from multiple APIs, sends a daily HTML email snapshot, and serves a real-time public dashboard.
+A Python application that fetches live financial market data from multiple APIs, generates an AI-powered morning briefing, sends a daily HTML email snapshot, and serves a real-time public dashboard.
 
 ## Features
 
+- **AI Morning Briefing**: Generates a concise market overview using Claude Haiku (Anthropic), displayed at the top of the dashboard
 - **Cryptocurrency Data**: Bitcoin, Ethereum, Solana, Ripple, and Cardano prices from CoinGecko, Fear & Greed Index from Alternative.me
 - **Energy Prices**: US gas and diesel prices from EIA (Energy Information Administration)
 - **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
-- **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
+- **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance — including Magnificent 7 stocks
 - **National Debt**: US national debt data from Treasury Fiscal Data API
 - **Email Delivery**: Sends formatted HTML emails via AgentMail, with per-recipient unsubscribe links
 - **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox or via the web signup form
-- **Public Dashboard**: Auto-generated landing page with real-time market data, live news headlines, email signup, and a snapshot archive
+- **Public Dashboard**: Auto-generated landing page with real-time market data, live news headlines, firm insights, email signup, and a snapshot archive
+- **Firm Insights**: Curated articles from Fidelity, BlackRock, J.P. Morgan AM, MarketWatch, and the On Watch podcast
 - **Live Data API**: `/api/live` endpoint (60-second cache) powers in-page polling so dashboard values update without a page reload
 - **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
 - **Test Mode**: Safe testing mode that only sends to test email addresses
@@ -67,6 +69,7 @@ You need to obtain API keys for the following services:
 - **AGENTMAIL_INBOX_ID** - Your AgentMail inbox ID
 - **EIA_API_KEY** - Get from [EIA Open Data](https://www.eia.gov/opendata/register.php)
 - **FRED_API_KEY** - Get from [FRED API](https://fred.stlouisfed.org/docs/api/api_key.html)
+- **ANTHROPIC_API_KEY** *(optional)* - Get from [Anthropic Console](https://console.anthropic.com/). Powers the AI Morning Briefing. Uses Claude Haiku — cost is a fraction of a cent per run (under $1/month at daily cadence). If not set, the briefing section is silently skipped.
 
 Copy the example env file and fill in your keys:
 
@@ -81,6 +84,7 @@ AGENTMAIL_API_KEY=your_agentmail_key
 AGENTMAIL_INBOX_ID=your_inbox_id
 EIA_API_KEY=your_eia_key
 FRED_API_KEY=your_fred_key
+ANTHROPIC_API_KEY=your_anthropic_key   # optional — enables AI Morning Briefing
 ```
 
 The app loads `.env` automatically at startup via `python-dotenv`. The `.env` file is excluded from git. If the keys are already set as environment variables (e.g. in CI or a cron environment), those take priority over `.env`.
@@ -254,12 +258,15 @@ sqlite3 db.sqlite3 "SELECT timestamp, btc_price, gspc_price FROM snapshots ORDER
 | Yahoo Finance | Market data | No |
 | Treasury Fiscal Data | National debt | No |
 | AgentMail | Email delivery | Yes |
+| Anthropic (Claude Haiku) | AI Morning Briefing | Optional |
 
 ## Data Sources
 
 The email includes sections for:
 
+- **AI Morning Briefing**: Claude-generated market overview (dashboard only)
 - **US Markets**: Live indices or futures (depending on market hours)
+- **Magnificent 7**: AAPL, MSFT, AMZN, GOOGL, META, TSLA, NVDA
 - **Volatility**: VIX index
 - **Cryptocurrencies**: BTC, ETH, SOL, XRP, ADA, Fear & Greed Index
 - **Energy**: Gas prices, crude oil
@@ -268,6 +275,7 @@ The email includes sections for:
 - **Bonds & Rates**: Treasury yields, mortgage rates, credit card APR
 - **Consumer Prices**: Eggs, milk, grocery inflation
 - **Macro Economy**: GDP, CPI, unemployment, national debt
+- **Firm Insights**: Curated articles from Fidelity, BlackRock, J.P. Morgan AM, MarketWatch, and the On Watch podcast
 
 ## Logging
 
