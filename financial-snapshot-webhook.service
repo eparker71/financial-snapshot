@@ -5,7 +5,13 @@ After=network.target
 [Service]
 User=eparker
 WorkingDirectory=/home/eparker/applications/Financial-Snapshot
-ExecStart=/home/eparker/applications/Financial-Snapshot/venv/bin/python webhook_server.py
+EnvironmentFile=/home/eparker/applications/Financial-Snapshot/.env
+ExecStart=/home/eparker/applications/Financial-Snapshot/venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:5000 \
+    --access-logfile /home/eparker/applications/Financial-Snapshot/logs/gunicorn-access.log \
+    --error-logfile /home/eparker/applications/Financial-Snapshot/logs/gunicorn-error.log \
+    webhook_server:app
 Restart=always
 RestartSec=5
 
