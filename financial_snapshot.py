@@ -96,7 +96,7 @@ def main():
     data.update(yahoo_data)
 
     # Build content
-    subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Financial Snapshot — {now.strftime('%b %-d, %Y')}"
+    subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Market Pulse — {now.strftime('%b %-d, %Y')}"
 
     def unsubscribe_url(addr: str) -> str:
         if WEBHOOK_BASE_URL and WEBHOOK_SECRET:

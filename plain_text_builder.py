@@ -14,7 +14,7 @@ def build_plain(data: dict, now: datetime, unsubscribe_url: str = "") -> str:
     def p(label: str, value: str, chg: str = "") -> str:
         return f"  {label}: {value} {chg}".rstrip() + "\n"
 
-    lines = [f"Daily Financial Snapshot\nGenerated: {date_str}\n"]
+    lines = [f"Daily Market Pulse\nGenerated: {date_str}\n"]
     lines.append("Market Closed\n" if market_closed else "Market Open\n")
 
     for section in sections:

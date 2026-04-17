@@ -23,7 +23,7 @@ from pathlib import Path
 # ── Config ─────────────────────────────────────────────────────────────────────
 OUTPUT_FILENAME = "index.html"
 FILE_PATTERN    = re.compile(r"^output_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.html$")
-APP_TITLE       = "Financial Snapshot"
+APP_TITLE       = "Market Pulse"
 NEWS_FEEDS = [
     ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
     ("CNBC Markets",  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),

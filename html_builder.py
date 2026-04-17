@@ -66,7 +66,7 @@ def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = 
 </head>
 <body>
 <div class=\"wrap\">
-  <h1>📊 Daily Financial Snapshot</h1>
+  <h1>📊 Daily Market Pulse</h1>
   <div class=\"gen\">Generated {date_str}</div>
   {"<h2>Market Closed</h2>" if market_closed else "<h2>Market Open</h2>"}
   {body_sections}

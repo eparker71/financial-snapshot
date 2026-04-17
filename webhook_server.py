@@ -96,19 +96,19 @@ def subscribe(first: str, last: str, email: str):
 
     plain = (
         f"Hi {first},\n\n"
-        "You're now subscribed to the Daily Financial Snapshot.\n"
+        "You're now subscribed to the Daily Market Pulse.\n"
         "You'll receive a market summary email each morning.\n\n"
         "To unsubscribe at any time, reply with 'unsubscribe' in the subject line.\n\n"
-        "— Financial Snapshot"
+        "— Market Pulse"
     )
     html = f"""
     <p>Hi {first},</p>
-    <p>You're now subscribed to the <strong>Daily Financial Snapshot</strong>.</p>
+    <p>You're now subscribed to the <strong>Daily Market Pulse</strong>.</p>
     <p>You'll receive a market summary email each morning.</p>
     <p>To unsubscribe at any time, reply with <em>unsubscribe</em> in the subject line.</p>
-    <p>— Financial Snapshot</p>
+    <p>— Market Pulse</p>
     """
-    send_reply(email, "Subscribed: Daily Financial Snapshot", html, plain)
+    send_reply(email, "Subscribed: Daily Market Pulse", html, plain)
 
 
 def unsubscribe(email: str):
@@ -120,18 +120,18 @@ def unsubscribe(email: str):
         log.info(f"Unsubscribe requested but email not found: {email}")
 
     plain = (
-        "You've been unsubscribed from the Daily Financial Snapshot.\n"
+        "You've been unsubscribed from the Daily Market Pulse.\n"
         "You will no longer receive emails.\n\n"
         "To resubscribe, send an email with 'subscribe' in the subject line.\n\n"
-        "— Financial Snapshot"
+        "— Market Pulse"
     )
     html = """
-    <p>You've been unsubscribed from the <strong>Daily Financial Snapshot</strong>.</p>
+    <p>You've been unsubscribed from the <strong>Daily Market Pulse</strong>.</p>
     <p>You will no longer receive emails.</p>
     <p>To resubscribe, send an email with <em>subscribe</em> in the subject line.</p>
-    <p>— Financial Snapshot</p>
+    <p>— Market Pulse</p>
     """
-    send_reply(email, "Unsubscribed: Daily Financial Snapshot", html, plain)
+    send_reply(email, "Unsubscribed: Daily Market Pulse", html, plain)
 
 
 # ── Webhook endpoint ──────────────────────────────────────────────────────────
@@ -311,7 +311,7 @@ def unsubscribe_link():
     return """
     <html><body style="font-family:sans-serif;max-width:480px;margin:60px auto;text-align:center;">
       <h2>You've been unsubscribed</h2>
-      <p>You will no longer receive the Daily Financial Snapshot.</p>
+      <p>You will no longer receive the Daily Market Pulse.</p>
       <p style="color:#888;font-size:13px;">To resubscribe, send an email with <em>subscribe</em> in the subject line.</p>
     </body></html>
     """, 200
