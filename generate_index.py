@@ -51,8 +51,10 @@ def get_latest_snapshot():
 # ── News ──────────────────────────────────────────────────────────────────────
 
 def fetch_news(max_items=MAX_NEWS):
+    per_source = max(1, max_items // len(NEWS_FEEDS))
     articles = []
     for source_name, url in NEWS_FEEDS:
+        count = 0
         try:
             r = requests.get(url, timeout=8,
                              headers={"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"})
@@ -62,12 +64,11 @@ def fetch_news(max_items=MAX_NEWS):
                 link  = item.findtext("link",  "").strip()
                 if title and link:
                     articles.append({"title": title[:100], "link": link, "source": source_name})
-                if len(articles) >= max_items:
+                    count += 1
+                if count >= per_source:
                     break
         except Exception as e:
             print(f"Warning: news fetch failed ({source_name}): {e}", file=sys.stderr)
-        if len(articles) >= max_items:
-            break
     return articles[:max_items]
 
 
