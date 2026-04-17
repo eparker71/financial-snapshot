@@ -166,6 +166,31 @@ def webhook():
     return jsonify({"status": "subscribed", "email": email}), 200
 
 
+@app.route("/unsubscribe", methods=["GET"])
+def unsubscribe_link():
+    """One-click unsubscribe from the link in the daily email."""
+    if WEBHOOK_SECRET and request.args.get("token") != WEBHOOK_SECRET:
+        return "<p>Invalid or missing token.</p>", 401
+
+    email = request.args.get("email", "").strip().lower()
+    if not email:
+        return "<p>Missing email address.</p>", 400
+
+    updated = User.update(active=False).where(User.email == email).execute()
+    if updated:
+        log.info(f"Unsubscribed via link: {email}")
+    else:
+        log.info(f"Unsubscribe link used but email not found: {email}")
+
+    return """
+    <html><body style="font-family:sans-serif;max-width:480px;margin:60px auto;text-align:center;">
+      <h2>You've been unsubscribed</h2>
+      <p>You will no longer receive the Daily Financial Snapshot.</p>
+      <p style="color:#888;font-size:13px;">To resubscribe, send an email with <em>subscribe</em> in the subject line.</p>
+    </body></html>
+    """, 200
+
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200

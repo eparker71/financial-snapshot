@@ -12,6 +12,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_OUTPUT_DIR = os.path.join(ROOT_DIR, "html")
 CREATE_HTML_OUTPUT_FILE = True  # Set to False to disable saving the HTML output to a file.
 HTML_ROOT_URL = "https://mktpulse.online" # Base URL where the HTML files will be hosted. Adjust if you host them elsewhere.
+WEBHOOK_BASE_URL = os.environ.get("WEBHOOK_BASE_URL", "").rstrip("/")  # e.g. https://mktpulse.online
 
 # ── Recipients ────────────────────────────────────────────────────────────────
 # Add or remove addresses here. TEST_MODE above overrides this list.

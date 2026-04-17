@@ -6,7 +6,7 @@ from render_utils import is_market_closed
 from snapshot_schema import build_snapshot_sections
 
 
-def build_plain(data: dict, now: datetime) -> str:
+def build_plain(data: dict, now: datetime, unsubscribe_url: str = "") -> str:
     date_str = now.strftime("%B %-d, %Y %-I:%M %p ET")
     market_closed = is_market_closed()
     sections = build_snapshot_sections(data, market_closed=market_closed)
@@ -23,5 +23,8 @@ def build_plain(data: dict, now: datetime) -> str:
             lines.append(p(row["label"], row["value"], row.get("change", "")))
             if row.get("sub"):
                 lines.append(f"    {row['sub']}\n")
+
+    if unsubscribe_url:
+        lines.append(f"\n---\nTo unsubscribe: {unsubscribe_url}\n")
 
     return "".join(lines)

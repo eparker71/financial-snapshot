@@ -7,7 +7,7 @@ from render_utils import is_market_closed
 from snapshot_schema import build_snapshot_sections
 
 
-def build_html(data: dict, now: datetime, root_url: str) -> str:
+def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = "") -> str:
     date_str = now.strftime("%B %-d, %Y %-I:%M %p ET")
     market_closed = is_market_closed()
     sections = build_snapshot_sections(data, market_closed=market_closed)
@@ -72,8 +72,9 @@ def build_html(data: dict, now: datetime, root_url: str) -> str:
   {body_sections}
 
   <div class=\"footer\">Data sourced from CoinGecko, Yahoo Finance, Alternative.me, EIA, FRED/BLS &nbsp;·&nbsp;
-  Not financial advice
-  <a href=\"{root_url}\" target=\"_blank\">View in previous days browser</a>
+  Not financial advice &nbsp;·&nbsp;
+  <a href=\"{root_url}\" target=\"_blank\">View in browser</a>
+  {f'&nbsp;·&nbsp; <a href=\"{html_lib.escape(unsubscribe_url)}\" target=\"_blank\">Unsubscribe</a>' if unsubscribe_url else ''}
   </div>
 </div>
 </body>

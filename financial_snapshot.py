@@ -29,9 +29,10 @@ from yahoo_api import fetch_yahoo_data
 # API keys — set as environment variables, never hardcode
 AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "")
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "")
+WEBHOOK_SECRET     = os.environ.get("WEBHOOK_SECRET", "")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL
+from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL, WEBHOOK_BASE_URL
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -96,12 +97,19 @@ def main():
 
     # Build content
     subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Financial Snapshot — {now.strftime('%b %-d, %Y')}"
-    html  = build_html(data, now, HTML_ROOT_URL)
-    plain = build_plain(data, now)
+
+    def unsubscribe_url(addr: str) -> str:
+        if WEBHOOK_BASE_URL and WEBHOOK_SECRET:
+            from urllib.parse import urlencode
+            return f"{WEBHOOK_BASE_URL}/unsubscribe?{urlencode({'email': addr, 'token': WEBHOOK_SECRET})}"
+        return ""
 
     # Send
     for addr in EMAIL_TO:
         try:
+            unsub_url = unsubscribe_url(addr)
+            html  = build_html(data, now, HTML_ROOT_URL, unsub_url)
+            plain = build_plain(data, now, unsub_url)
             result = send_email(subject, html, plain, addr)
             log.info(f"Sent to {addr} — message_id: {result.get('id')}")
             print(f"✓ Sent to {addr}")
