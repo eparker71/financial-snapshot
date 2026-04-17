@@ -17,6 +17,13 @@ def build_plain(data: dict, now: datetime, unsubscribe_url: str = "") -> str:
     lines = [f"Daily Market Pulse\nGenerated: {date_str}\n"]
     lines.append("Market Closed\n" if market_closed else "Market Open\n")
 
+    if data.get("ai_analysis") or data.get("watch_item"):
+        lines.append("\nAI MORNING BRIEFING\n")
+        if data.get("ai_analysis"):
+            lines.append(f"{data['ai_analysis']}\n")
+        if data.get("watch_item"):
+            lines.append(f"\nWatch today: {data['watch_item']}\n")
+
     for section in sections:
         lines.append(f"\n{section['title'].upper()}\n")
         for row in section["rows"]:

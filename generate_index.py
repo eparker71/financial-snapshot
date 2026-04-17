@@ -388,12 +388,20 @@ def render_html(snap, news, entries, firm_insights=None):
 
     # ── AI Analysis card ──────────────────────────────────────────────────────
     ai_analysis_html = ""
-    if snap and getattr(snap, "ai_analysis", None):
+    if snap and (getattr(snap, "ai_analysis", None) or getattr(snap, "watch_item", None)):
+        watch_html = ""
+        if getattr(snap, "watch_item", None):
+            watch_html = (
+                f'<div class="ai-watch">'
+                f'<strong>Watch today:</strong> {html_lib.escape(snap.watch_item)}'
+                f'</div>'
+            )
         ai_analysis_html = (
             f'<div class="ai-card">'
             f'<div class="ai-hd">AI Morning Briefing</div>'
-            f'<div class="ai-body">{html_lib.escape(snap.ai_analysis)}</div>'
-            f'</div>'
+            + (f'<div class="ai-body">{html_lib.escape(snap.ai_analysis)}</div>' if snap.ai_analysis else "")
+            + watch_html
+            + f'</div>'
         )
 
     # ── Data cards ────────────────────────────────────────────────────────────
@@ -706,6 +714,11 @@ def render_html(snap, news, entries, firm_insights=None):
     }}
     .ai-body {{
       font-size: 14px; color: var(--t1); line-height: 1.65;
+    }}
+    .ai-watch {{
+      margin-top: 12px; padding: 8px 12px;
+      background: rgba(56,139,253,0.07); border-left: 3px solid var(--accent);
+      font-size: 13px; color: var(--t1); line-height: 1.55; border-radius: 0 4px 4px 0;
     }}
 
     /* ── Firm Insights ──────────────────────────────── */

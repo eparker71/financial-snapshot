@@ -165,6 +165,7 @@ class Snapshot(BaseModel):
 
     # AI Analysis
     ai_analysis = TextField(null=True)
+    watch_item  = TextField(null=True)
 
     class Meta:
         table_name = "snapshots"
@@ -183,6 +184,7 @@ def _migrate_add_columns():
         ("tsla_price", "REAL"), ("tsla_change", "REAL"), ("tsla_change_pct", "REAL"),
         ("nvda_price", "REAL"), ("nvda_change", "REAL"), ("nvda_change_pct", "REAL"),
         ("ai_analysis", "TEXT"),
+        ("watch_item",  "TEXT"),
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing:

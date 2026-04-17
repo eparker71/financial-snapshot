@@ -45,13 +45,20 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── AI Market Analysis ────────────────────────────────────────────────────────
 
-def generate_market_analysis(data: dict) -> str | None:
-    """Generate a brief AI market analysis using Claude Haiku (low cost)."""
+def generate_market_analysis(data: dict) -> dict:
+    """Generate AI market content (briefing, email subject, watch item) using Claude Haiku.
+
+    Returns a dict with keys: analysis, subject, watch.
+    All values are None on failure or if the API key is not set.
+    """
+    fallback = {"analysis": None, "subject": None, "watch": None}
     if not ANTHROPIC_API_KEY:
         log.warning("ANTHROPIC_API_KEY not set — skipping AI analysis")
-        return None
+        return fallback
+    raw = ""
     try:
         import anthropic
+        import json
 
         # Build a compact market summary to pass as context
         def _v(val, fmt=".2f"):
@@ -91,15 +98,21 @@ Unemployment: {_v(unemp)}%
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         response = client.messages.create(
             model="claude-haiku-4-5",
-            max_tokens=400,
+            max_tokens=500,
             system=[
                 {
                     "type": "text",
                     "text": (
-                        "You are a concise financial market analyst. Given a snapshot of today's key market "
-                        "data, write a brief 3–4 sentence market overview suitable for a morning briefing. "
-                        "Highlight the most notable moves, trends, or tensions. Be factual and neutral. "
-                        "Do not use bullet points — write in flowing prose. Do not include disclaimers."
+                        "You are a concise financial market analyst. Given today's market data, return a JSON "
+                        "object with exactly three fields:\n"
+                        "- \"briefing\": A 3–4 sentence market overview in flowing prose. Highlight the most "
+                        "notable moves, trends, or tensions. Be factual and neutral. No bullets, no disclaimers.\n"
+                        "- \"subject\": An email subject line under 60 characters capturing the single most "
+                        "notable move. Examples: \"S&P +1.2%, VIX spiking — Tech leads\" or "
+                        "\"Yields surge, equities slip — CPI in focus\"\n"
+                        "- \"watch\": One specific, actionable thing to monitor today — 1–2 sentences explaining "
+                        "what to watch and why it matters right now.\n\n"
+                        "Return only valid JSON with those three keys. No markdown fences, no other text."
                     ),
                     "cache_control": {"type": "ephemeral"},
                 }
@@ -107,18 +120,28 @@ Unemployment: {_v(unemp)}%
             messages=[
                 {
                     "role": "user",
-                    "content": f"Here is today's market data:\n\n{market_summary}\n\nWrite the morning briefing.",
+                    "content": f"Here is today's market data:\n\n{market_summary}\n\nReturn the JSON.",
                 }
             ],
         )
-        analysis = response.content[0].text.strip()
-        log.info("AI analysis generated successfully")
-        print("✓ AI analysis generated")
-        return analysis
+        raw = response.content[0].text.strip()
+        parsed = json.loads(raw)
+        result = {
+            "analysis": (parsed.get("briefing") or "").strip() or None,
+            "subject":  (parsed.get("subject")  or "").strip() or None,
+            "watch":    (parsed.get("watch")    or "").strip() or None,
+        }
+        log.info("AI content generated successfully")
+        print("✓ AI content generated")
+        return result
+    except (ValueError, KeyError) as e:
+        log.warning(f"AI content JSON parse failed: {e} — raw: {raw[:200]}")
+        print(f"⚠  AI content parse failed: {e}")
+        return fallback
     except Exception as e:
-        log.warning(f"AI analysis failed: {e}")
-        print(f"⚠  AI analysis skipped: {e}")
-        return None
+        log.warning(f"AI content failed: {e}")
+        print(f"⚠  AI content skipped: {e}")
+        return fallback
 
 ET = ZoneInfo("America/New_York")
 
@@ -174,11 +197,14 @@ def main():
     yahoo_data = fetch_yahoo_data()
     data.update(yahoo_data)
 
-    # AI market analysis (Claude Haiku — low cost)
-    data["ai_analysis"] = generate_market_analysis(data)
+    # AI market content (Claude Haiku — low cost)
+    ai = generate_market_analysis(data)
+    data["ai_analysis"] = ai["analysis"]
+    data["watch_item"]  = ai["watch"]
 
-    # Build content
-    subject = f"{'[TEST] ' if TEST_MODE else ''}📊 Market Pulse — {now.strftime('%b %-d, %Y')}"
+    # Build content — use AI subject when available, fall back to static
+    ai_subject = ai["subject"] or f"Market Pulse — {now.strftime('%b %-d, %Y')}"
+    subject = f"{'[TEST] ' if TEST_MODE else ''}📊 {ai_subject}"
 
     def unsubscribe_url(addr: str) -> str:
         if WEBHOOK_BASE_URL and WEBHOOK_SECRET:

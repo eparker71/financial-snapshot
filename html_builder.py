@@ -12,6 +12,31 @@ def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = 
     market_closed = is_market_closed()
     sections = build_snapshot_sections(data, market_closed=market_closed)
 
+    ai_analysis = data.get("ai_analysis")
+    watch_item  = data.get("watch_item")
+
+    ai_block = ""
+    if ai_analysis or watch_item:
+        parts = []
+        if ai_analysis:
+            parts.append(
+                f"<p style='margin:0 0 10px;'>{html_lib.escape(ai_analysis)}</p>"
+            )
+        if watch_item:
+            parts.append(
+                f"<p style='margin:0; padding:8px 10px; background:#f5f5f5; "
+                f"border-left:3px solid #111; font-size:13px; color:#333;'>"
+                f"<strong>Watch today:</strong> {html_lib.escape(watch_item)}</p>"
+            )
+        ai_block = (
+            "<div style='margin-bottom:24px;'>"
+            "<div style='font-size:13px;font-weight:700;text-transform:uppercase;"
+            "letter-spacing:.05em;padding:8px 12px 6px;color:#111;"
+            "border-bottom:2px solid #111;margin-bottom:10px;'>AI Morning Briefing</div>"
+            + "".join(parts)
+            + "</div>"
+        )
+
     def format_row(row: dict) -> str:
         change_str = html_lib.escape(row.get("change", ""))
         if change_str:
@@ -69,6 +94,7 @@ def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = 
   <h1>📊 Daily Market Pulse</h1>
   <div class=\"gen\">Generated {date_str}</div>
   {"<h2>Market Closed</h2>" if market_closed else "<h2>Market Open</h2>"}
+  {ai_block}
   {body_sections}
 
   <div class=\"footer\">Data sourced from CoinGecko, Yahoo Finance, Alternative.me, EIA, FRED/BLS &nbsp;·&nbsp;

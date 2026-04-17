@@ -4,7 +4,7 @@ A Python application that fetches live financial market data from multiple APIs,
 
 ## Features
 
-- **AI Morning Briefing**: Generates a concise market overview using Claude Haiku (Anthropic), displayed at the top of the dashboard
+- **AI Morning Briefing**: Generates a concise market overview and a "Watch today" callout using Claude Haiku (Anthropic). Displayed in the daily email and at the top of the dashboard. Also generates a dynamic email subject line reflecting the day's most notable move.
 - **Cryptocurrency Data**: Bitcoin, Ethereum, Solana, Ripple, and Cardano prices from CoinGecko, Fear & Greed Index from Alternative.me
 - **Energy Prices**: US gas and diesel prices from EIA (Energy Information Administration)
 - **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
@@ -264,7 +264,7 @@ sqlite3 db.sqlite3 "SELECT timestamp, btc_price, gspc_price FROM snapshots ORDER
 
 The email includes sections for:
 
-- **AI Morning Briefing**: Claude-generated market overview (dashboard only)
+- **AI Morning Briefing**: Claude-generated market overview, "Watch today" callout, and dynamic subject line
 - **US Markets**: Live indices or futures (depending on market hours)
 - **Magnificent 7**: AAPL, MSFT, AMZN, GOOGL, META, TSLA, NVDA
 - **Volatility**: VIX index
