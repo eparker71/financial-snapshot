@@ -16,6 +16,7 @@ import re
 import sys
 import requests
 import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +30,36 @@ NEWS_FEEDS = [
     ("CNBC Markets",  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
     ("Investopedia",   "https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline"),
 ]
-MAX_NEWS = 12 
+MAX_NEWS = 12
+MAX_INSIGHTS_PER_SOURCE = 4
+FIRM_INSIGHT_SOURCES = [
+    {
+        "name": "Fidelity Viewpoints",
+        "type": "js_scrape",
+        "url": "https://www.fidelity.com/learning-center/viewpoints",
+        "base_url": "https://www.fidelity.com",
+        "container_sel": "div.pvd-tile__tile.article",
+        "heading_sel":   "h3",
+    },
+    {
+        "name": "BlackRock",
+        "type": "js_scrape",
+        "url": "https://www.blackrock.com/us/individual/insights",
+        "base_url": "https://www.blackrock.com",
+    },
+    {
+        "name": "J.P. Morgan AM",
+        "type": "scrape",
+        "url": "https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/market-updates/",
+        "base_url": "https://am.jpmorgan.com",
+    },
+    {
+        "name": "MarketWatch",
+        "type": "rss",
+        "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        "base_url": "",
+    },
+]
 # ───────────────────────────────────────────────────────────────────────────────
 
 
@@ -70,6 +100,130 @@ def fetch_news(max_items=MAX_NEWS):
         except Exception as e:
             print(f"Warning: news fetch failed ({source_name}): {e}", file=sys.stderr)
     return articles[:max_items]
+
+
+# ── Firm Insights ─────────────────────────────────────────────────────────────
+
+def _scrape_articles(url, base_url, max_items):
+    """Scrape article titles and links from a page using BeautifulSoup."""
+    headers = {"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"}
+    r = requests.get(url, timeout=10, headers=headers)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.content, "html.parser")
+    articles = []
+    # Find <a> tags that contain a heading child
+    for a in soup.find_all("a", href=True):
+        heading = a.find(["h2", "h3", "h4"])
+        if not heading:
+            continue
+        title = heading.get_text(strip=True)
+        if len(title) < 10:
+            continue
+        href = a["href"]
+        if href.startswith("/"):
+            href = base_url + href
+        if not href.startswith("http"):
+            continue
+        articles.append({"title": title[:120], "link": href})
+        if len(articles) >= max_items:
+            break
+    return articles
+
+
+def _rss_articles(url, max_items):
+    """Fetch articles from an RSS feed."""
+    headers = {"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"}
+    r = requests.get(url, timeout=10, headers=headers)
+    r.raise_for_status()
+    root = ET.fromstring(r.content)
+    articles = []
+    for item in root.findall(".//item"):
+        title = (item.findtext("title") or "").strip()
+        link  = (item.findtext("link")  or "").strip()
+        if title and link:
+            articles.append({"title": title[:120], "link": link})
+        if len(articles) >= max_items:
+            break
+    return articles
+
+
+def _js_scrape_articles(url, base_url, max_items, container_sel=None, heading_sel=None):
+    """Scrape a JS-rendered page using Playwright headless Firefox."""
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.firefox.launch(headless=True)
+        page = browser.new_page(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:124.0) Gecko/20100101 Firefox/124.0"
+        )
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(2500)
+        html = page.content()
+        browser.close()
+    soup = BeautifulSoup(html, "html.parser")
+    articles = []
+
+    if container_sel:
+        # Container-based: each tile has a heading + a sibling link
+        h_tag = heading_sel or "h2, h3, h4"
+        for container in soup.select(container_sel):
+            heading = container.select_one(h_tag)
+            if not heading:
+                continue
+            title = heading.get_text(strip=True)
+            if len(title) < 10:
+                continue
+            link_tag = container.find("a", href=True)
+            if not link_tag:
+                continue
+            href = link_tag["href"]
+            if href.startswith("/"):
+                href = base_url + href
+            if not href.startswith("http"):
+                continue
+            articles.append({"title": title[:120], "link": href})
+            if len(articles) >= max_items:
+                break
+    else:
+        # Generic: find <a> tags that wrap a heading
+        for a in soup.find_all("a", href=True):
+            heading = a.find(["h2", "h3", "h4"])
+            if not heading:
+                continue
+            title = heading.get_text(strip=True)
+            if len(title) < 10:
+                continue
+            href = a["href"]
+            if href.startswith("/"):
+                href = base_url + href
+            if not href.startswith("http"):
+                continue
+            articles.append({"title": title[:120], "link": href})
+            if len(articles) >= max_items:
+                break
+    return articles
+
+
+def fetch_firm_insights(max_per_source=MAX_INSIGHTS_PER_SOURCE):
+    """Fetch articles from institutional insight sources. Returns list of (source_name, articles)."""
+    results = []
+    for source in FIRM_INSIGHT_SOURCES:
+        name = source["name"]
+        try:
+            if source["type"] == "rss":
+                articles = _rss_articles(source["url"], max_per_source)
+            elif source["type"] == "js_scrape":
+                articles = _js_scrape_articles(
+                    source["url"], source.get("base_url", ""), max_per_source,
+                    container_sel=source.get("container_sel"),
+                    heading_sel=source.get("heading_sel"),
+                )
+            else:
+                articles = _scrape_articles(source["url"], source.get("base_url", ""), max_per_source)
+            if articles:
+                results.append({"source": name, "articles": articles})
+        except Exception as e:
+            print(f"Warning: firm insights fetch failed ({name}): {e}", file=sys.stderr)
+    return results
 
 
 # ── Archive helpers ───────────────────────────────────────────────────────────
@@ -153,7 +307,7 @@ def card(title, icon, *rows):
 
 # ── Main renderer ─────────────────────────────────────────────────────────────
 
-def render_html(snap, news, entries):
+def render_html(snap, news, entries, firm_insights=None):
     now_str   = datetime.now().strftime("%b %-d, %Y · %-I:%M %p")
     snap_time = (snap.timestamp.strftime("%b %-d, %Y")
                  if snap and snap.timestamp else "no data yet")
@@ -296,6 +450,31 @@ def render_html(snap, news, entries):
         )
     else:
         news_section = ""
+
+    # ── Firm Insights ─────────────────────────────────────────────────────────
+    if firm_insights:
+        insight_cols = ""
+        for group in firm_insights:
+            rows = "".join(
+                f'<a class="fi-row" href="{html_lib.escape(a["link"])}" target="_blank" rel="noopener noreferrer">'
+                f'{html_lib.escape(a["title"])}'
+                f'</a>'
+                for a in group["articles"]
+            )
+            insight_cols += (
+                f'<div class="fi-card">'
+                f'<div class="fi-hd">{html_lib.escape(group["source"])}</div>'
+                f'{rows}'
+                f'</div>'
+            )
+        firm_insights_section = (
+            f'<section class="page-sec" id="insights">'
+            f'<h2 class="sec-hd">Firm Insights</h2>'
+            f'<div class="fi-grid">{insight_cols}</div>'
+            f'</section>'
+        )
+    else:
+        firm_insights_section = ""
 
     # ── Archive ───────────────────────────────────────────────────────────────
     groups = defaultdict(list)
@@ -475,6 +654,28 @@ def render_html(snap, news, entries):
     .nc-source {{ font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }}
     .nc-title  {{ font-size: 14px; color: var(--t1); line-height: 1.4; }}
 
+    /* ── Firm Insights ──────────────────────────────── */
+    .fi-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }}
+    .fi-card {{
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }}
+    .fi-hd {{
+      font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--accent); padding: 10px 14px; border-bottom: 1px solid var(--border);
+    }}
+    .fi-row {{
+      display: block; padding: 9px 14px; font-size: 13px; color: var(--t2);
+      border-bottom: 1px solid var(--border); line-height: 1.4;
+      transition: color .12s, background .12s;
+    }}
+    .fi-row:last-child {{ border-bottom: none; }}
+    .fi-row:hover {{ color: var(--t1); background: var(--bg3); }}
+
     /* ── Subscribe ──────────────────────────────────── */
     .sub-card {{
       background: var(--bg2); border: 1px solid var(--border);
@@ -571,6 +772,8 @@ def render_html(snap, news, entries):
   </section>
 
   {news_section}
+
+  {firm_insights_section}
 
   <section class="page-sec" id="subscribe">
     <h2 class="sec-hd">Daily Email</h2>
@@ -678,16 +881,18 @@ def generate(target_dir=None):
     target_dir = Path(target_dir)
     target_dir.mkdir(exist_ok=True)
 
-    snap    = get_latest_snapshot()
-    news    = fetch_news()
-    entries = build_entries(target_dir)
-    page    = render_html(snap, news, entries)
+    snap           = get_latest_snapshot()
+    news           = fetch_news()
+    firm_insights  = fetch_firm_insights()
+    entries        = build_entries(target_dir)
+    page           = render_html(snap, news, entries, firm_insights)
 
     out = target_dir / OUTPUT_FILENAME
     out.write_text(page, encoding="utf-8")
 
+    insight_count = sum(len(g["articles"]) for g in firm_insights)
     print(f"✓  Dashboard generated: {out}")
-    print(f"   Snapshot: {'yes' if snap else 'none'} · News: {len(news)} articles · Archive: {len(entries)} files")
+    print(f"   Snapshot: {'yes' if snap else 'none'} · News: {len(news)} articles · Insights: {insight_count} ({len(firm_insights)} sources) · Archive: {len(entries)} files")
 
 
 def main():
