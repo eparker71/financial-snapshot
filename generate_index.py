@@ -28,7 +28,7 @@ APP_TITLE       = "Market Pulse"
 NEWS_FEEDS = [
     ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
     ("CNBC Markets",  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
-    ("Investopedia",   "https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline"),
+    ("Investopedia",   "https://www.investopedia.com/markets-news-4427704"),
 ]
 MAX_NEWS = 12
 MAX_INSIGHTS_PER_SOURCE = 4
@@ -88,15 +88,28 @@ def fetch_news(max_items=MAX_NEWS):
         try:
             r = requests.get(url, timeout=8,
                              headers={"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"})
-            root_el = ET.fromstring(r.content)
-            for item in root_el.findall(".//item"):
-                title = item.findtext("title", "").strip()
-                link  = item.findtext("link",  "").strip()
-                if title and link:
-                    articles.append({"title": title[:100], "link": link, "source": source_name})
-                    count += 1
-                if count >= per_source:
-                    break
+            try:
+                root_el = ET.fromstring(r.content)
+                items = root_el.findall(".//item")
+                for item in items:
+                    title = item.findtext("title", "").strip()
+                    link  = item.findtext("link",  "").strip()
+                    if title and link:
+                        articles.append({"title": title[:100], "link": link, "source": source_name})
+                        count += 1
+                    if count >= per_source:
+                        break
+            except ET.ParseError:
+                # Fall back to BeautifulSoup for malformed feeds
+                soup = BeautifulSoup(r.content, "html.parser")
+                for item in soup.find_all("item"):
+                    title = (item.find("title") or {}).get_text(strip=True)
+                    link  = (item.find("link")  or {}).get_text(strip=True)
+                    if title and link:
+                        articles.append({"title": title[:100], "link": link, "source": source_name})
+                        count += 1
+                    if count >= per_source:
+                        break
         except Exception as e:
             print(f"Warning: news fetch failed ({source_name}): {e}", file=sys.stderr)
     return articles[:max_items]
@@ -155,7 +168,7 @@ def _js_scrape_articles(url, base_url, max_items, container_sel=None, heading_se
         page = browser.new_page(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:124.0) Gecko/20100101 Firefox/124.0"
         )
-        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        page.goto(url, wait_until="domcontentloaded", timeout=45000)
         page.wait_for_timeout(2500)
         html = page.content()
         browser.close()
