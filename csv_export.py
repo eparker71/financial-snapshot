@@ -158,8 +158,9 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["gdp_growth_date"] = gdp_growth_date
 
     # AI Analysis
-    flat["ai_analysis"] = data.get("ai_analysis")
-    flat["watch_item"]  = data.get("watch_item")
+    flat["ai_analysis"]   = data.get("ai_analysis")
+    flat["watch_item"]    = data.get("watch_item")
+    flat["anomaly_alert"] = data.get("anomaly_alert")
 
     return flat
 

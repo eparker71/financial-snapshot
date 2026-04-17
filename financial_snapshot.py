@@ -43,6 +43,121 @@ log = logging.getLogger(__name__)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+# ── Anomaly Detection ────────────────────────────────────────────────────────
+
+def detect_anomalies(data: dict) -> list[str]:
+    """Check market data against thresholds. Returns a list of plain-English flag strings."""
+    flags = []
+
+    def _c(key, idx=2):
+        """Safely pull a value from a (price, change, pct) tuple stored under key."""
+        return (data.get(key) or (None, None, None))[idx]
+
+    # Equity indices — flag ≥ ±2% (S&P/Dow) or ≥ ±2.5% (Nasdaq)
+    sp_c  = _c("gspc")  or _c("sp500")
+    dj_c  = _c("dji")   or _c("dow")
+    nq_c  = _c("ndx")   or _c("nasdaq")
+    rut_c = _c("rut")   or _c("russell")
+    for name, val, thresh in [
+        ("S&P 500",      sp_c,  2.0),
+        ("Dow Jones",    dj_c,  2.0),
+        ("Nasdaq 100",   nq_c,  2.5),
+        ("Russell 2000", rut_c, 2.5),
+    ]:
+        if val is not None and abs(val) >= thresh:
+            flags.append(f"{name} {'up' if val > 0 else 'down'} {abs(val):.1f}% today")
+
+    # VIX — elevated ≥ 25, extreme ≥ 30
+    vix_p = _c("vix", 0)
+    if vix_p is not None:
+        if vix_p >= 30:
+            flags.append(f"VIX at {vix_p:.1f} (extreme fear territory)")
+        elif vix_p >= 25:
+            flags.append(f"VIX at {vix_p:.1f} (elevated volatility)")
+
+    # Fear & Greed — extreme fear ≤ 15, extreme greed ≥ 85
+    fg_val = (data.get("fear_greed") or (None, None))[0]
+    if fg_val is not None:
+        if fg_val <= 15:
+            flags.append(f"Fear & Greed Index at {int(fg_val)} — extreme fear")
+        elif fg_val >= 85:
+            flags.append(f"Fear & Greed Index at {int(fg_val)} — extreme greed")
+
+    # Bitcoin — flag ≥ ±8% in 24h
+    btc_c = data.get("btc_change_pct")
+    if btc_c is not None and abs(btc_c) >= 8.0:
+        flags.append(f"Bitcoin {'up' if btc_c > 0 else 'down'} {abs(btc_c):.1f}% in 24 hours")
+
+    # 10-yr Treasury yield — flag ≥ 8 bps daily move (change is in pct-points, e.g. 0.08 = 8bps)
+    t10y_chg = _c("t10y", 1)
+    if t10y_chg is not None and abs(t10y_chg) >= 0.08:
+        bps = int(round(abs(t10y_chg) * 100))
+        flags.append(
+            f"10-yr Treasury yield moved {'+' if t10y_chg > 0 else '-'}{bps}bps today "
+            f"({'higher' if t10y_chg > 0 else 'lower'} yields)"
+        )
+
+    # Oil — flag ≥ ±3%
+    oil_c = _c("oil")
+    if oil_c is not None and abs(oil_c) >= 3.0:
+        flags.append(f"Crude oil {'up' if oil_c > 0 else 'down'} {abs(oil_c):.1f}% today")
+
+    # Gold — flag ≥ ±2%
+    gold_c = _c("gold")
+    if gold_c is not None and abs(gold_c) >= 2.0:
+        flags.append(f"Gold {'up' if gold_c > 0 else 'down'} {abs(gold_c):.1f}% today")
+
+    # Magnificent 7 — flag any individual stock ≥ ±5%
+    mag7 = [
+        ("aapl",  "Apple (AAPL)"),
+        ("msft",  "Microsoft (MSFT)"),
+        ("amzn",  "Amazon (AMZN)"),
+        ("googl", "Alphabet (GOOGL)"),
+        ("meta",  "Meta (META)"),
+        ("tsla",  "Tesla (TSLA)"),
+        ("nvda",  "Nvidia (NVDA)"),
+    ]
+    for key, label in mag7:
+        c = _c(key)
+        if c is not None and abs(c) >= 5.0:
+            flags.append(f"{label} {'up' if c > 0 else 'down'} {abs(c):.1f}% today")
+
+    return flags
+
+
+def generate_anomaly_alert(flags: list[str]) -> str | None:
+    """Use Claude to write a brief contextual alert for the detected anomalies."""
+    if not ANTHROPIC_API_KEY or not flags:
+        return None
+    try:
+        import anthropic
+        flags_text = "\n".join(f"- {f}" for f in flags)
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=150,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        "You are a financial analyst writing a brief market alert for email subscribers. "
+                        "Based on these notable market moves detected today, write 1–2 sentences explaining "
+                        "what's happening and why it's worth paying attention to. Be specific and factual. "
+                        "No bullets, no disclaimers, no greeting.\n\n"
+                        f"Flagged moves:\n{flags_text}"
+                    ),
+                }
+            ],
+        )
+        alert = response.content[0].text.strip()
+        log.info(f"Anomaly alert generated ({len(flags)} flags)")
+        print(f"⚠  {len(flags)} anomaly flag(s) — alert generated")
+        return alert
+    except Exception as e:
+        log.warning(f"Anomaly alert generation failed: {e}")
+        return None
+
+
 # ── AI Market Analysis ────────────────────────────────────────────────────────
 
 def generate_market_analysis(data: dict) -> dict:
@@ -200,6 +315,14 @@ def main():
     # Yahoo Finance data
     yahoo_data = fetch_yahoo_data()
     data.update(yahoo_data)
+
+    # Anomaly detection (pure Python — always free)
+    flags = detect_anomalies(data)
+    if flags:
+        data["anomaly_alert"] = generate_anomaly_alert(flags)
+    else:
+        data["anomaly_alert"] = None
+        print("  No anomalies detected")
 
     # AI market content (Claude Haiku — low cost)
     ai = generate_market_analysis(data)

@@ -12,8 +12,21 @@ def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = 
     market_closed = is_market_closed()
     sections = build_snapshot_sections(data, market_closed=market_closed)
 
-    ai_analysis = data.get("ai_analysis")
-    watch_item  = data.get("watch_item")
+    ai_analysis    = data.get("ai_analysis")
+    watch_item     = data.get("watch_item")
+    anomaly_alert  = data.get("anomaly_alert")
+
+    anomaly_block = ""
+    if anomaly_alert:
+        anomaly_block = (
+            "<div style='margin-bottom:16px; padding:10px 12px; "
+            "background:#fffbeb; border:1px solid #f59e0b; border-left:4px solid #f59e0b; "
+            "border-radius:4px;'>"
+            "<div style='font-size:12px; font-weight:700; text-transform:uppercase; "
+            "letter-spacing:.05em; color:#b45309; margin-bottom:4px;'>⚠ Market Alert</div>"
+            f"<div style='font-size:13px; color:#333; line-height:1.55;'>{html_lib.escape(anomaly_alert)}</div>"
+            "</div>"
+        )
 
     ai_block = ""
     if ai_analysis or watch_item:
@@ -94,6 +107,7 @@ def build_html(data: dict, now: datetime, root_url: str, unsubscribe_url: str = 
   <h1>📊 Daily Market Pulse</h1>
   <div class=\"gen\">Generated {date_str}</div>
   {"<h2>Market Closed</h2>" if market_closed else "<h2>Market Open</h2>"}
+  {anomaly_block}
   {ai_block}
   {body_sections}
 

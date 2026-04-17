@@ -17,6 +17,9 @@ def build_plain(data: dict, now: datetime, unsubscribe_url: str = "") -> str:
     lines = [f"Daily Market Pulse\nGenerated: {date_str}\n"]
     lines.append("Market Closed\n" if market_closed else "Market Open\n")
 
+    if data.get("anomaly_alert"):
+        lines.append(f"\n⚠ MARKET ALERT\n{data['anomaly_alert']}\n")
+
     if data.get("ai_analysis") or data.get("watch_item"):
         lines.append("\nAI MORNING BRIEFING\n")
         if data.get("ai_analysis"):

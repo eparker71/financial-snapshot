@@ -386,6 +386,16 @@ def render_html(snap, news, entries, firm_insights=None):
 
     heroes_html = "\n".join(heroes)
 
+    # ── Anomaly alert card ────────────────────────────────────────────────────
+    anomaly_html = ""
+    if snap and getattr(snap, "anomaly_alert", None):
+        anomaly_html = (
+            f'<div class="anomaly-card">'
+            f'<div class="anomaly-hd">⚠ Market Alert</div>'
+            f'<div class="anomaly-body">{html_lib.escape(snap.anomaly_alert)}</div>'
+            f'</div>'
+        )
+
     # ── AI Analysis card ──────────────────────────────────────────────────────
     ai_analysis_html = ""
     if snap and (getattr(snap, "ai_analysis", None) or getattr(snap, "watch_item", None)):
@@ -697,6 +707,20 @@ def render_html(snap, news, entries, firm_insights=None):
     .nc-title  {{ font-size: 14px; color: var(--t1); line-height: 1.4; }}
 
     /* ── AI Analysis ───────────────────────────────── */
+    .anomaly-card {{
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.4);
+      border-left: 4px solid #f59e0b;
+      border-radius: var(--r); padding: 16px 20px;
+      margin-bottom: 20px;
+    }}
+    .anomaly-hd {{
+      font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: #b45309; margin-bottom: 8px;
+    }}
+    .anomaly-body {{
+      font-size: 14px; color: var(--t1); line-height: 1.6;
+    }}
     .ai-card {{
       background: linear-gradient(135deg, rgba(56,139,253,0.08) 0%, rgba(56,139,253,0.03) 100%);
       border: 1px solid rgba(56,139,253,0.25);
@@ -827,6 +851,7 @@ def render_html(snap, news, entries, firm_insights=None):
 
 <div class="page">
 
+  {anomaly_html}
   {ai_analysis_html}
 
   <div class="hero-strip">
