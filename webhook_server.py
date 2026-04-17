@@ -131,6 +131,20 @@ def unsubscribe(email: str):
 
 # ── Webhook endpoint ──────────────────────────────────────────────────────────
 
+@app.route("/subscribe", methods=["POST"])
+def subscribe_form():
+    """Web form subscription from the dashboard page."""
+    data  = request.get_json(silent=True) or request.form
+    email = (data.get("email") or "").strip().lower()
+    first = (data.get("first_name") or "").strip()
+
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+
+    subscribe(first or email.split("@")[0], "", email)
+    return jsonify({"status": "subscribed"}), 200
+
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     # Verify secret token if configured

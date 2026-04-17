@@ -132,5 +132,12 @@ def main():
     # Save snapshot to database
     save_to_db(data, now)
 
+    # Regenerate public dashboard
+    try:
+        from generate_index import generate
+        generate()
+    except Exception as e:
+        log.warning(f"Dashboard generation failed: {e}")
+
 if __name__ == "__main__":
     main()

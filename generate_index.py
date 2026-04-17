@@ -2,47 +2,88 @@
 """
 generate_index.py
 -----------------
-Scans the current directory (or a specified directory) for HTML files matching
-the pattern  output_YYYYMMDD_HHMMSS.html  and generates a polished index.html
-that links to every snapshot, organised by month.
+Generates the public-facing Financial Snapshot dashboard (html/index.html).
+Reads the latest market data from db.sqlite3, fetches recent financial news
+from RSS, and produces a modern HTML dashboard with subscribe form and archive.
 
 Usage:
-    python generate_index.py                     # scans current directory
-    python generate_index.py /path/to/snapshots  # scans specified directory
-    python generate_index.py --help
+    python generate_index.py              # writes to ./html/index.html
+    python generate_index.py /path/html   # writes to specified directory
 """
 
-import os
+import html as html_lib
 import re
 import sys
-from datetime import datetime
+import requests
+import xml.etree.ElementTree as ET
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# ── Config ─────────────────────────────────────────────────────────────────────
 OUTPUT_FILENAME = "index.html"
-FILE_PATTERN    = re.compile(
-    r"^output_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.html$"
-)
-APP_TITLE = "Financial Snapshots"
-APP_SUBTITLE = "Portfolio · Performance · History"
-# ─────────────────────────────────────────────────────────────────────────────
+FILE_PATTERN    = re.compile(r"^output_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\.html$")
+APP_TITLE       = "Financial Snapshot"
+NEWS_FEEDS = [
+    ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
+    ("CNBC Markets",  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+]
+MAX_NEWS = 6
+# ───────────────────────────────────────────────────────────────────────────────
 
 
-def parse_filename(filename: str):
-    """Return a datetime object if filename matches the convention, else None."""
+# ── Database ──────────────────────────────────────────────────────────────────
+
+def get_latest_snapshot():
+    try:
+        root = Path(__file__).parent
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from models import Snapshot, init_db
+        init_db()
+        return Snapshot.select().order_by(Snapshot.timestamp.desc()).first()
+    except Exception as e:
+        print(f"Warning: could not read DB: {e}", file=sys.stderr)
+        return None
+
+
+# ── News ──────────────────────────────────────────────────────────────────────
+
+def fetch_news(max_items=MAX_NEWS):
+    articles = []
+    for source_name, url in NEWS_FEEDS:
+        try:
+            r = requests.get(url, timeout=8,
+                             headers={"User-Agent": "Mozilla/5.0 FinancialSnapshot/1.0"})
+            root_el = ET.fromstring(r.content)
+            for item in root_el.findall(".//item"):
+                title = item.findtext("title", "").strip()
+                link  = item.findtext("link",  "").strip()
+                if title and link:
+                    articles.append({"title": title[:100], "link": link, "source": source_name})
+                if len(articles) >= max_items:
+                    break
+        except Exception as e:
+            print(f"Warning: news fetch failed ({source_name}): {e}", file=sys.stderr)
+        if len(articles) >= max_items:
+            break
+    return articles[:max_items]
+
+
+# ── Archive helpers ───────────────────────────────────────────────────────────
+
+def parse_filename(filename):
     m = FILE_PATTERN.match(filename)
     if not m:
         return None
-    year, month, day, hour, minute, second = (int(x) for x in m.groups())
+    y, mo, d, h, mi, s = (int(x) for x in m.groups())
     try:
-        return datetime(year, month, day, hour, minute, second)
+        return datetime(y, mo, d, h, mi, s)
     except ValueError:
         return None
 
 
-def build_entries(directory: Path) -> list[tuple[datetime, str]]:
-    """Return list of (datetime, filename) sorted newest-first."""
+def build_entries(directory):
     entries = []
     for f in directory.iterdir():
         if f.is_file():
@@ -53,472 +94,539 @@ def build_entries(directory: Path) -> list[tuple[datetime, str]]:
     return entries
 
 
-def group_by_month(entries):
-    """Return OrderedDict {(year, month): [(dt, filename), ...]} newest-first."""
+# ── Formatting helpers ────────────────────────────────────────────────────────
+
+def fv(val, decimals=2, prefix="$"):
+    if val is None:
+        return "—"
+    if val >= 1000:
+        return f"{prefix}{val:,.{decimals}f}"
+    return f"{prefix}{val:.{decimals}f}"
+
+
+def fc(val, suffix="%"):
+    if val is None:
+        return ""
+    return f"{'+' if val >= 0 else ''}{val:.2f}{suffix}"
+
+
+# ── Component builders ────────────────────────────────────────────────────────
+
+def dr(label, val_str, chg="", sub="", invert=False):
+    """Render a single data row inside a card."""
+    if chg:
+        is_up = chg.startswith("+")
+        good  = (is_up and not invert) or (not is_up and invert)
+        c     = "up" if good else "dn"
+        chg_h = f'<span class="dr-chg {c}">{html_lib.escape(chg)}</span>'
+    else:
+        chg_h = ""
+    sub_h = f'<div class="dr-sub">{html_lib.escape(sub)}</div>' if sub else ""
+    return (
+        f'<div class="dr">'
+        f'<span class="dr-lbl">{html_lib.escape(label)}</span>'
+        f'<span class="dr-val">{html_lib.escape(val_str)}{chg_h}{sub_h}</span>'
+        f'</div>'
+    )
+
+
+def card(title, icon, *rows):
+    body = "".join(r for r in rows if r)
+    if not body:
+        return ""
+    return (
+        f'<div class="data-card">'
+        f'<div class="card-hd"><span class="card-icon">{icon}</span>{html_lib.escape(title)}</div>'
+        f'{body}'
+        f'</div>'
+    )
+
+
+# ── Main renderer ─────────────────────────────────────────────────────────────
+
+def render_html(snap, news, entries):
+    now_str   = datetime.now().strftime("%b %-d, %Y · %-I:%M %p")
+    snap_time = (snap.timestamp.strftime("%b %-d, %Y")
+                 if snap and snap.timestamp else "no data yet")
+    total = len(entries)
+
+    # ── Hero tiles ────────────────────────────────────────────────────────────
+    def hero(label, val, chg_pct=None, prefix="$", decimals=2, invert=False):
+        val_str = fv(val, decimals, prefix) if val is not None else "—"
+        chg     = fc(chg_pct) if chg_pct is not None else ""
+        if chg:
+            is_up = chg.startswith("+")
+            good  = (is_up and not invert) or (not is_up and invert)
+            cls   = "up" if good else "dn"
+        else:
+            cls = "neu"
+        chg_html = f'<div class="h-chg {cls}">{html_lib.escape(chg)}</div>' if chg else '<div class="h-chg neu"></div>'
+        return (
+            f'<div class="hero-tile">'
+            f'<div class="h-label">{html_lib.escape(label)}</div>'
+            f'<div class="h-val">{html_lib.escape(val_str)}</div>'
+            f'{chg_html}'
+            f'</div>'
+        )
+
+    if snap:
+        sp_p = snap.gspc_price      or snap.sp500_futures_price
+        sp_c = snap.gspc_change_pct or snap.sp500_futures_change_pct
+        dj_p = snap.dji_price       or snap.dow_futures_price
+        dj_c = snap.dji_change_pct  or snap.dow_futures_change_pct
+
+        heroes = [
+            hero("S&P 500",   sp_p,            sp_c),
+            hero("Dow Jones", dj_p,            dj_c),
+            hero("Bitcoin",   snap.btc_price,   snap.btc_change_pct,   "$", 0),
+            hero("Gold",      snap.gold_price,  snap.gold_change_pct),
+            hero("VIX",       snap.vix_price,   snap.vix_change_pct,   "", 2, invert=True),
+        ]
+        if snap.fear_greed_value is not None:
+            fg     = int(snap.fear_greed_value)
+            fg_lbl = snap.fear_greed_label or ""
+            fg_cls = "up" if fg >= 50 else "dn"
+            heroes.append(
+                f'<div class="hero-tile">'
+                f'<div class="h-label">Fear &amp; Greed</div>'
+                f'<div class="h-val">{fg}</div>'
+                f'<div class="h-chg {fg_cls}">{html_lib.escape(fg_lbl)}</div>'
+                f'</div>'
+            )
+    else:
+        heroes = [hero("No data", None)]
+
+    heroes_html = "\n".join(heroes)
+
+    # ── Data cards ────────────────────────────────────────────────────────────
+    cards_html = ""
+    if snap:
+        sp_p  = snap.gspc_price      or snap.sp500_futures_price
+        sp_c  = snap.gspc_change_pct or snap.sp500_futures_change_pct
+        dj_p  = snap.dji_price       or snap.dow_futures_price
+        dj_c  = snap.dji_change_pct  or snap.dow_futures_change_pct
+        nq_p  = snap.ndx_price       or snap.nasdaq_futures_price
+        nq_c  = snap.ndx_change_pct  or snap.nasdaq_futures_change_pct
+        rut_p = snap.rut_price       or snap.russell_futures_price
+        rut_c = snap.rut_change_pct  or snap.russell_futures_change_pct
+
+        cards_html += card("US Markets", "📈",
+            dr("S&P 500",      fv(sp_p),                      fc(sp_c))                             if sp_p           else "",
+            dr("Dow Jones",    fv(dj_p),                      fc(dj_c))                             if dj_p           else "",
+            dr("Nasdaq 100",   fv(nq_p),                      fc(nq_c))                             if nq_p           else "",
+            dr("Russell 2000", fv(rut_p),                     fc(rut_c))                            if rut_p          else "",
+            dr("VIX",          fv(snap.vix_price, 2, ""),     fc(snap.vix_change_pct), invert=True) if snap.vix_price else "",
+        )
+
+        fg_row = (dr("Fear & Greed", f"{int(snap.fear_greed_value)} – {snap.fear_greed_label or ''}")
+                  if snap.fear_greed_value is not None else "")
+        cards_html += card("Crypto", "🪙",
+            dr("Bitcoin (BTC)",  fv(snap.btc_price, 0),   fc(snap.btc_change_pct))  if snap.btc_price  else "",
+            dr("Ethereum (ETH)", fv(snap.eth_price),       fc(snap.eth_change_pct))  if snap.eth_price  else "",
+            dr("Solana (SOL)",   fv(snap.sol_price),       fc(snap.sol_change_pct))  if snap.sol_price  else "",
+            dr("Ripple (XRP)",   fv(snap.xrp_price, 4),   fc(snap.xrp_change_pct))  if snap.xrp_price  else "",
+            dr("Cardano (ADA)",  fv(snap.ada_price, 4),   fc(snap.ada_change_pct))  if snap.ada_price  else "",
+            fg_row,
+        )
+
+        cards_html += card("Energy & Metals", "⛽",
+            dr("Crude Oil (WTI)",  fv(snap.oil_price),           fc(snap.oil_change_pct))    if snap.oil_price    else "",
+            dr("US Gas (avg)",     f"${snap.gas_price:.3f}/gal")                              if snap.gas_price    else "",
+            dr("US Diesel (avg)",  f"${snap.diesel_price:.3f}/gal")                           if snap.diesel_price else "",
+            dr("Gold",             fv(snap.gold_price),           fc(snap.gold_change_pct))   if snap.gold_price   else "",
+            dr("Silver",           fv(snap.silver_price),         fc(snap.silver_change_pct)) if snap.silver_price else "",
+        )
+
+        cards_html += card("FX & Rates", "💱",
+            dr("EUR/USD",         f"{snap.eurusd_price:.4f}" if snap.eurusd_price else "—", fc(snap.eurusd_change_pct)) if snap.eurusd_price  else "",
+            dr("USD/JPY",         f"¥{snap.usdjpy_price:.2f}" if snap.usdjpy_price else "—", fc(snap.usdjpy_change_pct)) if snap.usdjpy_price else "",
+            dr("10-Yr Treasury",  f"{snap.t10y_yield:.3f}%" if snap.t10y_yield else "—",    fc(snap.t10y_change_pct), invert=True) if snap.t10y_yield   else "",
+            dr("2-Yr Treasury",   f"{snap.t2y_yield:.3f}%"  if snap.t2y_yield  else "—",    fc(snap.t2y_change_pct),  invert=True) if snap.t2y_yield    else "",
+            dr("30-Yr Mortgage",  f"{snap.mortgage_rate:.2f}%")                                                                      if snap.mortgage_rate else "",
+            dr("Credit Card APR", f"{snap.credit_card_apr:.2f}%")                                                                   if snap.credit_card_apr else "",
+        )
+
+        macro_rows = "".join(filter(None, [
+            dr("CPI (All Items)",  f"{snap.cpi_all_yoy:.1f}% YoY",          sub=snap.cpi_all_date or "",    invert=True) if snap.cpi_all_yoy       else "",
+            dr("Unemployment",     f"{snap.unemployment_rate:.1f}%",                                         invert=True) if snap.unemployment_rate  else "",
+            dr("GDP Growth",       f"{snap.gdp_growth_qoq:.1f}% QoQ ann.",  sub=snap.gdp_growth_date or "")              if snap.gdp_growth_qoq     else "",
+            dr("National Debt",    f"${snap.national_debt/1e12:.2f}T",       sub=snap.national_debt_date or "", invert=True) if snap.national_debt   else "",
+            dr("Eggs (Grade A)",   f"${snap.eggs_price:.2f}/doz",                                            invert=True) if snap.eggs_price         else "",
+            dr("Milk (whole)",     f"${snap.milk_price:.2f}/gal",                                            invert=True) if snap.milk_price         else "",
+        ]))
+        if macro_rows:
+            cards_html += card("Economy", "📉", macro_rows)
+    else:
+        cards_html = '<p class="empty-msg">No snapshot data yet — run financial_snapshot.py first.</p>'
+
+    # ── News section ──────────────────────────────────────────────────────────
+    if news:
+        news_cards = "".join(
+            f'<a class="news-card" href="{html_lib.escape(a["link"])}" target="_blank" rel="noopener noreferrer">'
+            f'<div class="nc-source">{html_lib.escape(a["source"])}</div>'
+            f'<div class="nc-title">{html_lib.escape(a["title"])}</div>'
+            f'</a>'
+            for a in news
+        )
+        news_section = (
+            f'<section class="page-sec" id="news">'
+            f'<h2 class="sec-hd">Market News</h2>'
+            f'<div class="news-grid">{news_cards}</div>'
+            f'</section>'
+        )
+    else:
+        news_section = ""
+
+    # ── Archive ───────────────────────────────────────────────────────────────
     groups = defaultdict(list)
     for dt, name in entries:
         groups[(dt.year, dt.month)].append((dt, name))
-    # sort months newest-first
-    return dict(sorted(groups.items(), reverse=True))
+    groups = dict(sorted(groups.items(), reverse=True))
 
-
-def ordinal(n: int) -> str:
-    suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10 if n % 100 not in (11, 12, 13) else 0, "th")
-    return f"{n}{suffix}"
-
-
-def render_html(groups: dict, total: int) -> str:
-    now_str = datetime.now().strftime("%d %b %Y · %H:%M")
-
-    # Build month sections
-    month_nav_items  = []
-    month_sections   = []
-
-    for (year, month), entries in groups.items():
-        month_dt   = datetime(year, month, 1)
-        month_id   = f"m-{year}-{month:02d}"
-        month_name = month_dt.strftime("%B %Y")
-        count      = len(entries)
-
-        month_nav_items.append(
-            f'<a href="#{month_id}" class="nav-month">'
-            f'<span class="nav-month-name">{month_name}</span>'
-            f'<span class="nav-month-count">{count}</span>'
-            f'</a>'
+    arc_months = ""
+    for (year, month), month_entries in groups.items():
+        mname = datetime(year, month, 1).strftime("%B %Y")
+        rows  = "".join(
+            f'<a class="arc-row" href="{name}">{dt.strftime("%a %b %-d · %H:%M")}</a>'
+            for dt, name in month_entries
+        )
+        arc_months += (
+            f'<div class="arc-month">'
+            f'<div class="arc-mhd">{mname} <span class="arc-cnt">{len(month_entries)}</span></div>'
+            f'<div class="arc-rows">{rows}</div>'
+            f'</div>'
         )
 
-        # Card rows for each snapshot
-        cards_html = []
-        for i, (dt, filename) in enumerate(entries):
-            weekday   = dt.strftime("%a")
-            day_ord   = ordinal(dt.day)
-            time_str  = dt.strftime("%H:%M:%S")
-            date_full = dt.strftime(f"%A, {day_ord} %B %Y")
-            cards_html.append(f"""
-            <a href="{filename}" class="snap-card" style="animation-delay:{i * 0.04:.2f}s">
-              <div class="snap-left">
-                <span class="snap-weekday">{weekday}</span>
-                <span class="snap-day">{dt.day:02d}</span>
-              </div>
-              <div class="snap-center">
-                <span class="snap-date-full">{date_full}</span>
-                <span class="snap-filename">{filename}</span>
-              </div>
-              <div class="snap-right">
-                <span class="snap-time">{time_str}</span>
-                <span class="snap-arrow">↗</span>
-              </div>
-            </a>""")
+    archive_section = (
+        f'<section class="page-sec" id="archive">'
+        f'<h2 class="sec-hd">Snapshot Archive</h2>'
+        f'<div class="arc-grid">{arc_months if arc_months else "<p class=\"empty-msg\">No snapshots yet.</p>"}</div>'
+        f'</section>'
+    ) if entries else ""
 
-        month_sections.append(f"""
-        <section class="month-section" id="{month_id}">
-          <div class="month-header">
-            <h2 class="month-title">{month_name}</h2>
-            <span class="month-pill">{count} snapshot{"s" if count != 1 else ""}</span>
-          </div>
-          <div class="snap-list">
-            {''.join(cards_html)}
-          </div>
-        </section>""")
-
-    nav_html      = "\n".join(month_nav_items)
-    sections_html = "\n".join(month_sections)
-
+    # ── Full page ─────────────────────────────────────────────────────────────
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{APP_TITLE}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    /* ── Reset & Tokens ───────────────────────────────────────────── */
     *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-
-:root {{
-  --bg:          #f9f8f5;
-  --bg2:         #ffffff;
-  --bg3:         #f2f0eb;
-  --border:      rgba(0,0,0,0.08);
-  --border-h:    rgba(160,120,40,0.35);
-
-  --gold:        #a07828;
-  --gold-dim:    rgba(160,120,40,0.1);
-  --gold-glow:   rgba(160,120,40,0.05);
-
-  --text-1:      #1a1a14;
-  --text-2:      #6b6b58;
-  --text-3:      #b0ae9e;
-
-  --nav-w:       240px;
-  --radius:      10px;
-  --transition:  0.22s cubic-bezier(0.4,0,0.2,1);
-}}
-
+    :root {{
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #21262d;
+      --border:  rgba(240,246,252,0.10);
+      --border2: rgba(240,246,252,0.18);
+      --t1:      #e6edf3;
+      --t2:      #8b949e;
+      --t3:      #484f58;
+      --accent:  #388bfd;
+      --up:      #3fb950;
+      --dn:      #f85149;
+      --neu:     #8b949e;
+      --r:       8px;
+    }}
     html {{ scroll-behavior: smooth; }}
-
     body {{
       background: var(--bg);
-      color: var(--text-1);
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 300;
+      color: var(--t1);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
       min-height: 100vh;
-      overflow-x: hidden;
     }}
+    a {{ color: inherit; text-decoration: none; }}
 
-    /* ── Grain overlay ───────────────────────────────────────────── */
-    body::before {{
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-      background-repeat: repeat;
-      background-size: 200px 200px;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.5;
-    }}
-
-    /* ── Layout ─────────────────────────────────────────────────── */
-    .layout {{
-      display: grid;
-      grid-template-columns: var(--nav-w) 1fr;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
-      position: relative;
-      z-index: 1;
-    }}
-
-    /* ── Top bar ─────────────────────────────────────────────────── */
+    /* ── Top bar ────────────────────────────────────── */
     .topbar {{
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 36px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(12,14,17,0.9);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.92);
       backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
     }}
-
-    .topbar-brand {{ display: flex; align-items: baseline; gap: 14px; }}
-
-    .topbar-title {{
-      font-family: 'DM Serif Display', serif;
-      font-size: 1.45rem;
-      letter-spacing: -0.01em;
-      color: var(--text-1);
+    .tb-left  {{ display: flex; align-items: center; gap: 12px; }}
+    .tb-logo  {{ font-size: 16px; font-weight: 600; letter-spacing: -.3px; }}
+    .tb-badge {{
+      font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+      background: var(--bg3); color: var(--t2); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 20px;
     }}
-
-    .topbar-subtitle {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--gold);
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+    .tb-right {{ display: flex; align-items: center; gap: 16px; }}
+    .tb-meta  {{ font-size: 12px; color: var(--t2); font-family: 'JetBrains Mono', monospace; }}
+    .tb-meta span {{ color: var(--t1); }}
+    .tb-cta {{
+      font-size: 13px; font-weight: 500; color: var(--accent);
+      padding: 6px 14px; border: 1px solid var(--accent);
+      border-radius: 6px; transition: background .15s;
     }}
+    .tb-cta:hover {{ background: rgba(56,139,253,.1); }}
 
-    .topbar-meta {{
-      display: flex;
-      align-items: center;
-      gap: 24px;
+    /* ── Page wrapper ───────────────────────────────── */
+    .page {{ max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }}
+
+    /* ── Hero strip ─────────────────────────────────── */
+    .hero-strip {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
     }}
-
-    .meta-chip {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--text-2);
-      letter-spacing: 0.06em;
+    .hero-tile {{
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px;
+      transition: border-color .15s;
     }}
+    .hero-tile:hover {{ border-color: var(--border2); }}
+    .h-label {{ font-size: 11px; color: var(--t2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }}
+    .h-val   {{ font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: var(--t1); line-height: 1.1; margin-bottom: 4px; }}
+    .h-chg   {{ font-family: 'JetBrains Mono', monospace; font-size: 12px; min-height: 16px; }}
 
-    .meta-chip b {{ color: var(--gold); font-weight: 500; }}
-
-    .meta-updated {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--text-3);
-      letter-spacing: 0.05em;
-    }}
-
-    /* ── Sidebar nav ─────────────────────────────────────────────── */
-    .sidebar {{
-      padding: 32px 0;
-      border-right: 1px solid var(--border);
-      position: sticky;
-      top: 65px;
-      height: calc(100vh - 65px);
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }}
-
-    .sidebar-label {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--text-3);
-      padding: 0 24px 12px;
-    }}
-
-    .nav-month {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 24px;
-      text-decoration: none;
-      color: var(--text-2);
-      font-size: 0.82rem;
-      font-weight: 400;
-      transition: var(--transition);
-      border-left: 2px solid transparent;
-    }}
-
-    .nav-month:hover {{
-      color: var(--text-1);
-      background: var(--gold-glow);
-      border-left-color: var(--gold);
-    }}
-
-    .nav-month-name {{ font-family: 'DM Sans', sans-serif; }}
-
-    .nav-month-count {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--text-3);
-      background: var(--bg3);
-      padding: 2px 7px;
-      border-radius: 20px;
-    }}
-
-    /* ── Main content ────────────────────────────────────────────── */
-    .main {{
-      padding: 40px 48px;
-      max-width: 900px;
-    }}
-
-    /* ── Month sections ──────────────────────────────────────────── */
-    .month-section {{ margin-bottom: 52px; }}
-
-    .month-header {{
-      display: flex;
-      align-items: baseline;
-      gap: 14px;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+    /* ── Section heading ────────────────────────────── */
+    .sec-hd {{
+      font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 14px; padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
     }}
+    .page-sec {{ margin-bottom: 48px; }}
 
-    .month-title {{
-      font-family: 'DM Serif Display', serif;
-      font-size: 1.55rem;
-      font-weight: 400;
-      color: var(--text-1);
-      letter-spacing: -0.02em;
-    }}
-
-    .month-pill {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.1em;
-      color: var(--gold);
-      background: var(--gold-dim);
-      border: 1px solid rgba(212,175,95,0.25);
-      padding: 3px 10px;
-      border-radius: 20px;
-    }}
-
-    /* ── Snapshot cards ──────────────────────────────────────────── */
-    .snap-list {{ display: flex; flex-direction: column; gap: 6px; }}
-
-    .snap-card {{
+    /* ── Data cards ─────────────────────────────────── */
+    .cards-grid {{
       display: grid;
-      grid-template-columns: 54px 1fr auto;
-      align-items: center;
-      gap: 18px;
-      padding: 14px 20px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--bg2);
-      text-decoration: none;
-      color: inherit;
-      transition: var(--transition);
-      opacity: 0;
-      animation: fadeUp 0.4s forwards;
-      position: relative;
-      overflow: hidden;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 12px;
     }}
-
-    .snap-card::before {{
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, var(--gold-glow) 0%, transparent 60%);
-      opacity: 0;
-      transition: var(--transition);
+    .data-card {{
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
     }}
-
-    .snap-card:hover {{
-      border-color: var(--border-h);
-      background: var(--bg3);
-      transform: translateX(3px);
+    .card-hd {{
+      font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--t2); padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
     }}
-
-    .snap-card:hover::before {{ opacity: 1; }}
-
-    .snap-left {{
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 4px 0;
-      border-right: 1px solid var(--border);
+    .card-icon {{ font-size: 13px; }}
+    .dr {{
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 7px 14px; border-bottom: 1px solid var(--border);
     }}
+    .dr:last-child {{ border-bottom: none; }}
+    .dr-lbl {{ color: var(--t2); font-size: 13px; }}
+    .dr-val {{ font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--t1); text-align: right; }}
+    .dr-chg {{ font-size: 11px; margin-left: 5px; }}
+    .dr-sub {{ font-size: 10px; color: var(--t3); display: block; margin-top: 1px; }}
 
-    .snap-weekday {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-3);
+    /* ── Colors ─────────────────────────────────────── */
+    .up  {{ color: var(--up); }}
+    .dn  {{ color: var(--dn); }}
+    .neu {{ color: var(--neu); }}
+
+    /* ── News ───────────────────────────────────────── */
+    .news-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
     }}
-
-    .snap-day {{
-      font-family: 'DM Serif Display', serif;
-      font-size: 1.4rem;
-      color: var(--gold);
-      line-height: 1;
+    .news-card {{
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px; display: block;
+      transition: border-color .15s, background .15s;
     }}
+    .news-card:hover {{ border-color: var(--border2); background: var(--bg3); }}
+    .nc-source {{ font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }}
+    .nc-title  {{ font-size: 14px; color: var(--t1); line-height: 1.4; }}
 
-    .snap-center {{
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
+    /* ── Subscribe ──────────────────────────────────── */
+    .sub-card {{
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 36px 40px;
+      display: flex; align-items: center; gap: 48px;
     }}
-
-    .snap-date-full {{
-      font-size: 0.85rem;
-      color: var(--text-1);
-      font-weight: 400;
+    .sub-copy       {{ flex: 1; }}
+    .sub-copy h2    {{ font-size: 20px; font-weight: 600; margin-bottom: 6px; }}
+    .sub-copy p     {{ color: var(--t2); font-size: 14px; }}
+    .sub-form       {{ flex: 1; display: flex; flex-direction: column; gap: 10px; }}
+    .form-row       {{ display: flex; gap: 8px; }}
+    .form-row input, .sub-form input[type="email"] {{
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 9px 12px; color: var(--t1);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color .15s;
     }}
-
-    .snap-filename {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--text-3);
-      letter-spacing: 0.04em;
+    .form-row input:focus, .sub-form input[type="email"]:focus {{ border-color: var(--accent); }}
+    .sub-form button {{
+      background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: 10px; font-size: 14px; font-weight: 500; cursor: pointer;
+      font-family: inherit; transition: opacity .15s;
     }}
+    .sub-form button:hover {{ opacity: .85; }}
+    .sub-msg      {{ font-size: 13px; min-height: 18px; }}
+    .sub-msg.ok   {{ color: var(--up); }}
+    .sub-msg.err  {{ color: var(--dn); }}
 
-    .snap-right {{
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
+    /* ── Archive ────────────────────────────────────── */
+    .arc-grid   {{ display: flex; flex-direction: column; gap: 20px; }}
+    .arc-mhd    {{
+      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
     }}
-
-    .snap-time {{
-      font-family: 'DM Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--text-2);
-      letter-spacing: 0.05em;
+    .arc-cnt    {{
+      font-size: 10px; background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 10px; color: var(--t3); font-weight: 400;
     }}
-
-    .snap-arrow {{
-      font-size: 0.9rem;
-      color: var(--text-3);
-      transition: var(--transition);
+    .arc-rows   {{ display: flex; flex-wrap: wrap; gap: 6px; }}
+    .arc-row    {{
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t2);
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+      padding: 4px 10px; transition: color .12s, border-color .12s;
     }}
+    .arc-row:hover {{ color: var(--t1); border-color: var(--border2); }}
 
-    .snap-card:hover .snap-arrow {{ color: var(--gold); transform: translate(2px,-2px); }}
-
-    /* ── Animation ───────────────────────────────────────────────── */
-    @keyframes fadeUp {{
-      from {{ opacity: 0; transform: translateY(10px); }}
-      to   {{ opacity: 1; transform: translateY(0); }}
+    /* ── Footer ─────────────────────────────────────── */
+    .footer {{
+      border-top: 1px solid var(--border); padding-top: 24px; margin-top: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
     }}
+    .footer-l, .footer-r {{ font-size: 11px; color: var(--t3); }}
 
-    /* ── Empty state ─────────────────────────────────────────────── */
-    .empty {{
-      text-align: center;
-      padding: 100px 40px;
-      color: var(--text-3);
-      font-family: 'DM Mono', monospace;
-      font-size: 0.8rem;
-      letter-spacing: 0.1em;
-    }}
+    /* ── Misc ───────────────────────────────────────── */
+    .empty-msg {{ color: var(--t3); font-size: 13px; padding: 8px 0; }}
 
-    /* ── Scrollbar ───────────────────────────────────────────────── */
-    ::-webkit-scrollbar {{ width: 5px; }}
-    ::-webkit-scrollbar-track {{ background: transparent; }}
-    ::-webkit-scrollbar-thumb {{ background: var(--border); border-radius: 4px; }}
-
-    /* ── Responsive ──────────────────────────────────────────────── */
-    @media (max-width: 720px) {{
-      .layout {{ grid-template-columns: 1fr; }}
-      .sidebar {{ display: none; }}
-      .topbar {{ padding: 16px 20px; }}
-      .main {{ padding: 24px 20px; }}
+    /* ── Responsive ─────────────────────────────────── */
+    @media (max-width: 640px) {{
+      .topbar {{ padding: 0 16px; }}
+      .page {{ padding: 20px 16px 60px; }}
+      .hero-strip {{ grid-template-columns: repeat(2, 1fr); }}
+      .tb-meta {{ display: none; }}
+      .sub-card {{ flex-direction: column; gap: 24px; padding: 24px; }}
+      .form-row {{ flex-direction: column; }}
     }}
   </style>
 </head>
 <body>
-<div class="layout">
 
-  <!-- Top bar -->
-  <header class="topbar">
-    <div class="topbar-brand">
-      <span class="topbar-title">{APP_TITLE}</span>
-      <span class="topbar-subtitle">{APP_SUBTITLE}</span>
+<header class="topbar">
+  <div class="tb-left">
+    <span class="tb-logo">📊 {APP_TITLE}</span>
+    <span class="tb-badge">Last snapshot: {snap_time}</span>
+  </div>
+  <div class="tb-right">
+    <span class="tb-meta">Generated <span>{now_str}</span></span>
+    <a href="#subscribe" class="tb-cta">Subscribe</a>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="hero-strip">
+    {heroes_html}
+  </div>
+
+  <section class="page-sec" id="data">
+    <h2 class="sec-hd">Market Data</h2>
+    <div class="cards-grid">
+      {cards_html}
     </div>
-    <div class="topbar-meta">
-      <span class="meta-chip"><b>{total}</b> total snapshots</span>
-      <span class="meta-updated">Updated {now_str}</span>
+  </section>
+
+  {news_section}
+
+  <section class="page-sec" id="subscribe">
+    <h2 class="sec-hd">Daily Email</h2>
+    <div class="sub-card">
+      <div class="sub-copy">
+        <h2>Get the Daily Snapshot</h2>
+        <p>Markets, crypto, energy, rates, and macro&nbsp;&mdash; delivered to your inbox each morning.</p>
+      </div>
+      <form class="sub-form" id="sub-form">
+        <div class="form-row">
+          <input type="text" name="first_name" placeholder="First name">
+          <input type="email" name="email" placeholder="Email address" required>
+        </div>
+        <button type="submit">Subscribe &rarr;</button>
+        <div class="sub-msg" id="sub-msg"></div>
+      </form>
     </div>
-  </header>
+  </section>
 
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-label">Browse by month</div>
-    {nav_html}
-  </nav>
+  {archive_section}
 
-  <!-- Main -->
-  <main class="main">
-    {"".join(month_sections) if groups else '<div class="empty">NO SNAPSHOTS FOUND</div>'}
-  </main>
+  <footer class="footer">
+    <div class="footer-l">Data: CoinGecko &middot; Yahoo Finance &middot; EIA &middot; FRED/BLS &middot; US Treasury &middot; Not financial advice</div>
+    <div class="footer-r">{total} snapshot{"s" if total != 1 else ""} archived</div>
+  </footer>
 
 </div>
+
+<script>
+document.getElementById('sub-form').addEventListener('submit', async function(e) {{
+  e.preventDefault();
+  const msg = document.getElementById('sub-msg');
+  msg.className = 'sub-msg';
+  msg.textContent = 'Subscribing\u2026';
+  const data = {{
+    first_name: (this.first_name.value || '').trim(),
+    email:      this.email.value.trim(),
+  }};
+  try {{
+    const r = await fetch('/subscribe', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify(data),
+    }});
+    if (r.ok) {{
+      msg.className = 'sub-msg ok';
+      msg.textContent = "You\u2019re subscribed! Check your inbox for a confirmation.";
+      this.reset();
+    }} else {{
+      const j = await r.json().catch(() => ({{}}));
+      msg.className = 'sub-msg err';
+      msg.textContent = j.error || 'Something went wrong. Please try again.';
+    }}
+  }} catch {{
+    msg.className = 'sub-msg err';
+    msg.textContent = 'Could not connect. Please try again.';
+  }}
+}});
+</script>
+
 </body>
 </html>"""
 
 
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+def generate(target_dir=None):
+    """Generate the dashboard. Can be called programmatically."""
+    if target_dir is None:
+        target_dir = Path(__file__).parent / "html"
+    target_dir = Path(target_dir)
+    target_dir.mkdir(exist_ok=True)
+
+    snap    = get_latest_snapshot()
+    news    = fetch_news()
+    entries = build_entries(target_dir)
+    page    = render_html(snap, news, entries)
+
+    out = target_dir / OUTPUT_FILENAME
+    out.write_text(page, encoding="utf-8")
+
+    print(f"✓  Dashboard generated: {out}")
+    print(f"   Snapshot: {'yes' if snap else 'none'} · News: {len(news)} articles · Archive: {len(entries)} files")
+
+
 def main():
-    # Determine target directory
-    if len(sys.argv) > 1 and sys.argv[1] not in ("--help", "-h"):
-        target = Path(sys.argv[1]).resolve()
-    elif len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
         print(__doc__)
         sys.exit(0)
-    else:
-        target = Path.cwd()
-
-    if not target.is_dir():
-        print(f"Error: '{target}' is not a directory.", file=sys.stderr)
-        sys.exit(1)
-
-    entries = build_entries(target)
-    groups  = group_by_month(entries)
-    html    = render_html(groups, len(entries))
-
-    out_path = target / OUTPUT_FILENAME
-    out_path.write_text(html, encoding="utf-8")
-
-    print(f"✓  Index generated: {out_path}")
-    print(f"   {len(entries)} snapshot(s) across {len(groups)} month(s).")
+    target = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else None
+    generate(target)
 
 
 if __name__ == "__main__":
