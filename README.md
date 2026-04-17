@@ -1,6 +1,6 @@
 # Financial Snapshot Emailer
 
-A Python application that fetches live financial market data from multiple APIs and sends a formatted HTML email snapshot using AgentMail.
+A Python application that fetches live financial market data from multiple APIs, sends a daily HTML email snapshot, and serves a real-time public dashboard.
 
 ## Features
 
@@ -9,8 +9,10 @@ A Python application that fetches live financial market data from multiple APIs 
 - **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance
 - **National Debt**: US national debt data from Treasury Fiscal Data API
-- **Email Delivery**: Sends formatted HTML emails via AgentMail
-- **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox
+- **Email Delivery**: Sends formatted HTML emails via AgentMail, with per-recipient unsubscribe links
+- **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox or via the web signup form
+- **Public Dashboard**: Auto-generated landing page with real-time market data, live news headlines, email signup, and a snapshot archive
+- **Live Data API**: `/api/live` endpoint (60-second cache) powers in-page polling so dashboard values update without a page reload
 - **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
@@ -32,7 +34,8 @@ financial_snapshot.py     # Main application orchestrator
 ├── yahoo_api.py          # Yahoo Finance API
 ├── settings.py           # Configuration settings
 ├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
-├── webhook_server.py     # Flask server for inbound email signups
+├── generate_index.py     # Generates html/index.html — the public dashboard
+├── webhook_server.py     # Flask/Gunicorn server: live data API, web signup, webhooks
 ├── register_webhook.py   # One-time script to register webhook with AgentMail
 ├── financial-snapshot-webhook.service  # systemd unit for webhook server (Gunicorn)
 ├── nginx-webhook.conf    # Nginx reverse proxy config snippet
@@ -82,11 +85,12 @@ FRED_API_KEY=your_fred_key
 
 The app loads `.env` automatically at startup via `python-dotenv`. The `.env` file is excluded from git. If the keys are already set as environment variables (e.g. in CI or a cron environment), those take priority over `.env`.
 
-If you are using the webhook server for self-service signups, also add:
+If you are using the webhook server (live dashboard, web signup, inbound email signups), also add:
 
 ```bash
 WEBHOOK_SECRET=choose_a_random_secret_string
 WEBHOOK_PORT=5000
+WEBHOOK_BASE_URL=https://yourdomain.com  # used to build unsubscribe links in emails
 ```
 
 ### 3. Email Configuration
@@ -202,14 +206,30 @@ sudo nginx -t && sudo systemctl reload nginx
 #    Include the token query param matching WEBHOOK_SECRET in your .env
 python register_webhook.py https://yourdomain.com/webhook?token=YOUR_WEBHOOK_SECRET
 
-# 5. Verify
+# 5. Generate the dashboard
+python generate_index.py
+
+# 6. Verify
 curl http://localhost:5000/health       # direct Gunicorn check
 curl https://yourdomain.com/health      # through Nginx
+curl https://yourdomain.com/api/live    # live data JSON
 ```
 
-**How it works:**
-- User sends an email to your AgentMail inbox with **"subscribe"** in the subject → added to the database, confirmation email sent
-- User sends an email with **"unsubscribe"** in the subject → deactivated in the database, confirmation email sent
+The server exposes these endpoints (all proxied by Nginx):
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/live` | GET | Real-time market data JSON (60s cache) — polled by the dashboard |
+| `/subscribe` | POST | Web form signup from the dashboard |
+| `/unsubscribe` | GET | One-click unsubscribe from email links |
+| `/webhook` | POST | AgentMail inbound email events |
+| `/health` | GET | Liveness check |
+
+**How email signups work:**
+- User fills out the form on the dashboard → `POST /subscribe`
+- User sends an email to your AgentMail inbox with **"subscribe"** in the subject → added via webhook
+- User clicks the unsubscribe link in a daily email → `GET /unsubscribe`
+- User sends an email with **"unsubscribe"** in the subject → deactivated via webhook
 
 ### HTML Output
 
