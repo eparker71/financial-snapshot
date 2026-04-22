@@ -636,7 +636,7 @@ function renderCard(p) {
         </table>
         <div class="wer-row">
           <span>Weighted avg. expense ratio:&nbsp;<strong>${fmtER(wa)}</strong></span>
-          <span class="source-note">ER &amp; AUM from Yahoo Finance &middot; verified ${ALL_DATA[currentKey].verified_at}</span>
+          <span class="source-note">ER &amp; AUM from Yahoo Finance &middot; verified ${dataMap[currentKey].verified_at}</span>
         </div>
       </div>
     </div>
