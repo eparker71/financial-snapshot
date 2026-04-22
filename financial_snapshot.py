@@ -6,9 +6,10 @@ Run via cron: 0 7 * * * /path/to/venv/bin/python /path/to/financial_snapshot.py
 """
 
 import os
+import sys
 import logging
 import requests
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -264,6 +265,73 @@ Unemployment: {_v(unemp)}%
 
 ET = ZoneInfo("America/New_York")
 
+# ── Market calendar ───────────────────────────────────────────────────────────
+
+def _easter(year: int) -> date:
+    """Return the date of Easter Sunday for the given year (Anonymous Gregorian algorithm)."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(114 + h + l - 7 * m, 31)
+    return date(year, month, day + 1)
+
+
+def _nyse_holidays(year: int) -> set[date]:
+    """Return the set of NYSE market holidays for a given year."""
+
+    def _observed(d: date) -> date:
+        """Shift a holiday to the nearest weekday if it falls on a weekend."""
+        if d.weekday() == 5:   # Saturday → Friday
+            return d - timedelta(days=1)
+        if d.weekday() == 6:   # Sunday → Monday
+            return d + timedelta(days=1)
+        return d
+
+    def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
+        """Return the nth occurrence (1-based) of weekday (Mon=0) in the given month."""
+        first = date(year, month, 1)
+        delta = (weekday - first.weekday()) % 7
+        return first + timedelta(days=delta + (n - 1) * 7)
+
+    def _last_weekday(year: int, month: int, weekday: int) -> date:
+        """Return the last occurrence of weekday in the given month."""
+        # Start from the last day of the month and go backwards
+        if month == 12:
+            last = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            last = date(year, month + 1, 1) - timedelta(days=1)
+        delta = (last.weekday() - weekday) % 7
+        return last - timedelta(days=delta)
+
+    holidays = {
+        _observed(date(year, 1, 1)),                       # New Year's Day
+        _nth_weekday(year, 1, 0, 3),                       # MLK Day (3rd Mon Jan)
+        _nth_weekday(year, 2, 0, 3),                       # Presidents' Day (3rd Mon Feb)
+        _easter(year) - timedelta(days=2),                 # Good Friday
+        _last_weekday(year, 5, 0),                         # Memorial Day (last Mon May)
+        _observed(date(year, 6, 19)),                      # Juneteenth
+        _observed(date(year, 7, 4)),                       # Independence Day
+        _nth_weekday(year, 9, 0, 1),                       # Labor Day (1st Mon Sep)
+        _nth_weekday(year, 11, 3, 4),                      # Thanksgiving (4th Thu Nov)
+        _observed(date(year, 12, 25)),                     # Christmas Day
+    }
+    return holidays
+
+
+def is_market_open(today: date | None = None) -> bool:
+    """Return True if the US stock market (NYSE) is open on *today* (ET date)."""
+    if today is None:
+        today = datetime.now(ET).date()
+    if today.weekday() >= 5:          # Saturday=5, Sunday=6
+        return False
+    return today not in _nyse_holidays(today.year)
+
 if TEST_MODE:
     print(f"⚠️  TEST MODE — sending only to {EMAIL_TO[0] if EMAIL_TO else None}")
 
@@ -289,6 +357,12 @@ def send_email(subject: str, html: str, plain: str, to: str):
 
 def main():
     now = datetime.now(ET)
+
+    if not is_market_open(now.date()):
+        log.info(f"Market closed today ({now.date()}) — skipping run.")
+        print(f"Market closed today ({now.date()}) — skipping run.")
+        sys.exit(0)
+
     log.info(f"Starting snapshot run at {now.isoformat()}")
 
     data = {}
