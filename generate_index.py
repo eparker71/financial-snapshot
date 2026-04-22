@@ -611,6 +611,12 @@ def render_html(snap, news, entries, firm_insights=None):
     .tb-right {{ display: flex; align-items: center; gap: 16px; }}
     .tb-meta  {{ font-size: 12px; color: var(--t2); font-family: 'JetBrains Mono', monospace; }}
     .tb-meta span {{ color: var(--t1); }}
+    .tb-nav {{
+      font-size: 13px; font-weight: 500; color: var(--t2);
+      padding: 6px 14px; border: 1px solid var(--border);
+      border-radius: 6px; transition: border-color .15s, color .15s;
+    }}
+    .tb-nav:hover {{ border-color: var(--border2); color: var(--t1); }}
     .tb-cta {{
       font-size: 13px; font-weight: 500; color: var(--accent);
       padding: 6px 14px; border: 1px solid var(--accent);
@@ -830,6 +836,7 @@ def render_html(snap, news, entries, firm_insights=None):
       .page {{ padding: 20px 16px 60px; }}
       .hero-strip {{ grid-template-columns: repeat(2, 1fr); }}
       .tb-meta {{ display: none; }}
+      .tb-nav  {{ display: none; }}
       .sub-card {{ flex-direction: column; gap: 24px; padding: 24px; }}
       .form-row {{ flex-direction: column; }}
     }}
@@ -845,6 +852,7 @@ def render_html(snap, news, entries, firm_insights=None):
   <div class="tb-right">
     <div class="live-badge"><div class="live-dot"></div>Live</div>
     <span class="tb-updated" id="live-ts">updating…</span>
+    <a href="portfolios.html" class="tb-nav">Portfolios</a>
     <a href="#subscribe" class="tb-cta">Subscribe</a>
   </div>
 </header>

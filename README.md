@@ -14,6 +14,7 @@ A Python application that fetches live financial market data from multiple APIs,
 - **Email Delivery**: Sends formatted HTML emails via AgentMail, with per-recipient unsubscribe links
 - **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox or via the web signup form
 - **Public Dashboard**: Auto-generated landing page with real-time market data, live news headlines, firm insights, email signup, and a snapshot archive
+- **AI Portfolio Advisor**: Generates a tabbed portfolio recommendations page (`html/portfolios.html`) with four strategies per brokerage (Fidelity, Vanguard, Schwab, E*TRADE, Generic). Uses Claude Sonnet to select brokerage-appropriate funds, then validates every ticker live via Yahoo Finance for expense ratios and AUM.
 - **Firm Insights**: Curated articles from Fidelity, BlackRock, J.P. Morgan AM, MarketWatch, and the On Watch podcast
 - **Live Data API**: `/api/live` endpoint (60-second cache) powers in-page polling so dashboard values update without a page reload
 - **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
@@ -38,6 +39,7 @@ financial_snapshot.py     # Main application orchestrator
 ├── settings.py           # Configuration settings
 ├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
 ├── generate_index.py     # Generates html/index.html — the public dashboard
+├── generate_portfolios.py # Generates html/portfolios.html — AI portfolio advisor
 ├── webhook_server.py     # Flask/Gunicorn server: live data API, web signup, webhooks
 ├── register_webhook.py   # One-time script to register webhook with AgentMail
 ├── financial-snapshot-webhook.service  # systemd unit for webhook server (Gunicorn)
@@ -175,6 +177,31 @@ source venv/bin/activate
 # Run the financial snapshot
 python financial_snapshot.py
 ```
+
+### Generating the Portfolio Advisor Page
+
+```bash
+# Generate html/portfolios.html (calls Claude + validates via Yahoo Finance)
+python generate_portfolios.py
+
+# Skip Yahoo Finance validation (faster, no live ER/AUM)
+python generate_portfolios.py --skip-validation
+
+# Write to a custom path
+python generate_portfolios.py --out /path/to/out.html
+```
+
+This generates a tabbed page with four portfolio strategies per brokerage:
+
+| Tab | Brokerage | Fund preference |
+|-----|-----------|----------------|
+| Fidelity | Fidelity Investments | Fidelity ZERO funds, iShares Core ETFs |
+| Vanguard | Vanguard | Vanguard ETFs and Admiral shares |
+| Schwab | Charles Schwab | Schwab ETFs |
+| E*TRADE | E*TRADE (Morgan Stanley) | iShares Core ETFs, Vanguard ETFs |
+| Generic | Any brokerage | Broadly available ETFs |
+
+Each portfolio covers four strategies: Dividend Income, Aggressive Growth, Moderate Growth, and Capital Preservation. Expense ratios and AUM are validated live against Yahoo Finance. The page links back to the main dashboard and is linked from the dashboard's top navigation bar.
 
 ### Scheduled Execution
 
