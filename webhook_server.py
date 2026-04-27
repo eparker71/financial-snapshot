@@ -294,11 +294,43 @@ def webhook():
 
 @app.route("/unsubscribe", methods=["GET"])
 def unsubscribe_link():
-    """One-click unsubscribe from the link in the daily email."""
-    if WEBHOOK_SECRET and request.args.get("token") != WEBHOOK_SECRET:
-        return "<p>Invalid or missing token.</p>", 401
-
+    """Show a confirmation page — actual unsubscribe requires a POST to prevent
+    email security scanners from auto-clicking the link and deactivating users."""
+    token = request.args.get("token", "")
     email = request.args.get("email", "").strip().lower()
+
+    if WEBHOOK_SECRET and token != WEBHOOK_SECRET:
+        return "<p>Invalid or missing token.</p>", 401
+    if not email:
+        return "<p>Missing email address.</p>", 400
+
+    from html import escape
+    safe_email = escape(email)
+    safe_token = escape(token)
+    return f"""
+    <html><body style="font-family:sans-serif;max-width:480px;margin:60px auto;text-align:center;">
+      <h2>Unsubscribe from Daily Market Pulse</h2>
+      <p>Click the button below to stop receiving emails at <strong>{safe_email}</strong>.</p>
+      <form method="POST" action="/unsubscribe">
+        <input type="hidden" name="email" value="{safe_email}">
+        <input type="hidden" name="token" value="{safe_token}">
+        <button type="submit" style="background:#c0392b;color:#fff;border:none;padding:12px 28px;font-size:16px;border-radius:6px;cursor:pointer;">
+          Confirm Unsubscribe
+        </button>
+      </form>
+    </body></html>
+    """, 200
+
+
+@app.route("/unsubscribe", methods=["POST"])
+def unsubscribe_confirm():
+    """Process the confirmed unsubscribe."""
+    data  = request.get_json(silent=True) or request.form
+    token = data.get("token", "")
+    email = (data.get("email") or "").strip().lower()
+
+    if WEBHOOK_SECRET and token != WEBHOOK_SECRET:
+        return "<p>Invalid or missing token.</p>", 401
     if not email:
         return "<p>Missing email address.</p>", 400
 

@@ -253,15 +253,18 @@ The server exposes these endpoints (all proxied by Nginx):
 |----------|--------|-------------|
 | `/api/live` | GET | Real-time market data JSON (60s cache) — polled by the dashboard |
 | `/subscribe` | POST | Web form signup from the dashboard |
-| `/unsubscribe` | GET | One-click unsubscribe from email links |
+| `/unsubscribe` | GET | Unsubscribe confirmation page (does **not** unsubscribe immediately) |
+| `/unsubscribe` | POST | Confirms and processes the unsubscribe |
 | `/webhook` | POST | AgentMail inbound email events |
 | `/health` | GET | Liveness check |
 
 **How email signups work:**
 - User fills out the form on the dashboard → `POST /subscribe`
 - User sends an email to your AgentMail inbox with **"subscribe"** in the subject → added via webhook
-- User clicks the unsubscribe link in a daily email → `GET /unsubscribe`
+- User clicks the unsubscribe link in a daily email → `GET /unsubscribe` shows a confirmation page → user clicks the button → `POST /unsubscribe` deactivates the account
 - User sends an email with **"unsubscribe"** in the subject → deactivated via webhook
+
+> **Note:** The unsubscribe link in emails intentionally requires a confirmation click before deactivating the account. This prevents email security scanners (Proofpoint, Barracuda, MS Defender, etc.) from auto-clicking the link and silently unsubscribing users.
 
 ### HTML Output
 
