@@ -122,6 +122,13 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
         flat[f"{ticker}_change"] = c
         flat[f"{ticker}_change_pct"] = pct
 
+    # Sector ETFs
+    for ticker in ("xlk", "xlc", "xly", "xlp", "xlv", "xlf", "xli", "xlb", "xlre", "xlu", "xle"):
+        p, c, pct = data.get(ticker, (None, None, None))
+        flat[f"{ticker}_price"] = p
+        flat[f"{ticker}_change"] = c
+        flat[f"{ticker}_change_pct"] = pct
+
     # Consumer Prices
     eggs_val, eggs_mom, eggs_date = data.get("ev_eggs", (None, None, None))
     flat["eggs_price"] = eggs_val

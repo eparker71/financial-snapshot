@@ -218,6 +218,36 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
             "invert": False,
         })
 
+    # Sector ETFs
+    sector_etfs = [
+        ("Technology",              "xlk"),
+        ("Communication Services",  "xlc"),
+        ("Consumer Discretionary",  "xly"),
+        ("Consumer Staples",        "xlp"),
+        ("Health Care",             "xlv"),
+        ("Financials",              "xlf"),
+        ("Industrials",             "xli"),
+        ("Materials",               "xlb"),
+        ("Real Estate",             "xlre"),
+        ("Utilities",               "xlu"),
+        ("Energy",                  "xle"),
+    ]
+    sector_rows_raw = []
+    for label, key in sector_etfs:
+        p, c, pct = data.get(key, (None, None, None))
+        sector_rows_raw.append((label, key.upper(), p, c, pct))
+    sector_rows_raw.sort(key=lambda x: x[4] if x[4] is not None else float("-inf"), reverse=True)
+    sector_rows: List[RowData] = [
+        {
+            "label": f"{label} ({ticker})",
+            "value": fmt_price(p, 2),
+            "change": fmt_change(c, pct),
+            "sub": "",
+            "invert": False,
+        }
+        for label, ticker, p, c, pct in sector_rows_raw
+    ]
+
     if market_closed:
         futures_rows: List[RowData] = [
             {
@@ -251,6 +281,7 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
         ]
         sections.insert(0, {"title": "📈 US Market Futures", "rows": futures_rows})
         sections.insert(1, {"title": "💎 Magnificent 7", "rows": mag7_rows})
+        sections.insert(2, {"title": "📊 Sector Performance", "rows": sector_rows})
     else:
         index_rows: List[RowData] = [
             {
@@ -293,6 +324,7 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
             }
         ]})
         sections.insert(2, {"title": "💎 Magnificent 7", "rows": mag7_rows})
+        sections.insert(3, {"title": "📊 Sector Performance", "rows": sector_rows})
 
     # Consumer Prices
     eggs_val, eggs_mom, eggs_date = data.get("ev_eggs", (None, None, None))

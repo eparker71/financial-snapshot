@@ -56,6 +56,18 @@ def fetch_yahoo_data():
         "meta":  "META",
         "tsla":  "TSLA",
         "nvda":  "NVDA",
+        # Sector ETFs (SPDR)
+        "xlk":  "XLK",
+        "xlc":  "XLC",
+        "xly":  "XLY",
+        "xlp":  "XLP",
+        "xlv":  "XLV",
+        "xlf":  "XLF",
+        "xli":  "XLI",
+        "xlb":  "XLB",
+        "xlre": "XLRE",
+        "xlu":  "XLU",
+        "xle":  "XLE",
     }
 
     data = {}

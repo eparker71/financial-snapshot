@@ -136,6 +136,41 @@ class Snapshot(BaseModel):
     nvda_change      = FloatField(null=True)
     nvda_change_pct  = FloatField(null=True)
 
+    # Sector ETFs
+    xlk_price       = FloatField(null=True)
+    xlk_change      = FloatField(null=True)
+    xlk_change_pct  = FloatField(null=True)
+    xlc_price       = FloatField(null=True)
+    xlc_change      = FloatField(null=True)
+    xlc_change_pct  = FloatField(null=True)
+    xly_price       = FloatField(null=True)
+    xly_change      = FloatField(null=True)
+    xly_change_pct  = FloatField(null=True)
+    xlp_price       = FloatField(null=True)
+    xlp_change      = FloatField(null=True)
+    xlp_change_pct  = FloatField(null=True)
+    xlv_price       = FloatField(null=True)
+    xlv_change      = FloatField(null=True)
+    xlv_change_pct  = FloatField(null=True)
+    xlf_price       = FloatField(null=True)
+    xlf_change      = FloatField(null=True)
+    xlf_change_pct  = FloatField(null=True)
+    xli_price       = FloatField(null=True)
+    xli_change      = FloatField(null=True)
+    xli_change_pct  = FloatField(null=True)
+    xlb_price       = FloatField(null=True)
+    xlb_change      = FloatField(null=True)
+    xlb_change_pct  = FloatField(null=True)
+    xlre_price      = FloatField(null=True)
+    xlre_change     = FloatField(null=True)
+    xlre_change_pct = FloatField(null=True)
+    xlu_price       = FloatField(null=True)
+    xlu_change      = FloatField(null=True)
+    xlu_change_pct  = FloatField(null=True)
+    xle_price       = FloatField(null=True)
+    xle_change      = FloatField(null=True)
+    xle_change_pct  = FloatField(null=True)
+
     # Consumer Prices
     eggs_price      = FloatField(null=True)
     eggs_mom_change = FloatField(null=True)
@@ -187,6 +222,17 @@ def _migrate_add_columns():
         ("ai_analysis",   "TEXT"),
         ("watch_item",    "TEXT"),
         ("anomaly_alert", "TEXT"),
+        ("xlk_price", "REAL"), ("xlk_change", "REAL"), ("xlk_change_pct", "REAL"),
+        ("xlc_price", "REAL"), ("xlc_change", "REAL"), ("xlc_change_pct", "REAL"),
+        ("xly_price", "REAL"), ("xly_change", "REAL"), ("xly_change_pct", "REAL"),
+        ("xlp_price", "REAL"), ("xlp_change", "REAL"), ("xlp_change_pct", "REAL"),
+        ("xlv_price", "REAL"), ("xlv_change", "REAL"), ("xlv_change_pct", "REAL"),
+        ("xlf_price", "REAL"), ("xlf_change", "REAL"), ("xlf_change_pct", "REAL"),
+        ("xli_price", "REAL"), ("xli_change", "REAL"), ("xli_change_pct", "REAL"),
+        ("xlb_price", "REAL"), ("xlb_change", "REAL"), ("xlb_change_pct", "REAL"),
+        ("xlre_price", "REAL"), ("xlre_change", "REAL"), ("xlre_change_pct", "REAL"),
+        ("xlu_price", "REAL"), ("xlu_change", "REAL"), ("xlu_change_pct", "REAL"),
+        ("xle_price", "REAL"), ("xle_change", "REAL"), ("xle_change_pct", "REAL"),
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing:
