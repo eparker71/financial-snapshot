@@ -444,6 +444,32 @@ def render_html(snap, news, entries, firm_insights=None):
             dr("Nvidia (NVDA)",   fv(snap.nvda_price),  fc(snap.nvda_change_pct))  if snap.nvda_price  else "",
         )
 
+        sector_etfs = [
+            ("Technology",             "xlk"),
+            ("Communication Svcs",     "xlc"),
+            ("Consumer Discret.",       "xly"),
+            ("Consumer Staples",        "xlp"),
+            ("Health Care",             "xlv"),
+            ("Financials",              "xlf"),
+            ("Industrials",             "xli"),
+            ("Materials",               "xlb"),
+            ("Real Estate",             "xlre"),
+            ("Utilities",               "xlu"),
+            ("Energy",                  "xle"),
+        ]
+        sector_data = [
+            (label, ticker, getattr(snap, f"{ticker}_price", None), getattr(snap, f"{ticker}_change_pct", None))
+            for label, ticker in sector_etfs
+        ]
+        sector_data.sort(key=lambda x: x[3] if x[3] is not None else float("-inf"), reverse=True)
+        sector_rows = "".join(
+            dr(f"{label} ({ticker.upper()})", fv(p), fc(pct))
+            for label, ticker, p, pct in sector_data
+            if p is not None
+        )
+        if sector_rows:
+            cards_html += card("Sector Performance", "📊", sector_rows)
+
         fg_row = (dr("Fear & Greed", f"{int(snap.fear_greed_value)} – {snap.fear_greed_label or ''}", live_key="fear_greed")
                   if snap.fear_greed_value is not None else "")
         cards_html += card("Crypto", "🪙",
