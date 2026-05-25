@@ -25,6 +25,8 @@ from energy_api import fetch_gas
 from treasury_api import fetch_national_debt
 from fred_api import fetch_everyday_economy
 from yahoo_api import fetch_yahoo_data
+from polymarket_api import fetch_polymarket
+from kalshi_api import fetch_kalshi
 
 # ── Config ────────────────────────────────────────────────────────────────────
 # API keys — set as environment variables, never hardcode
@@ -389,6 +391,12 @@ def main():
     # Yahoo Finance data
     yahoo_data = fetch_yahoo_data()
     data.update(yahoo_data)
+
+    # Prediction markets (Polymarket + Kalshi — public read-only endpoints)
+    data["prediction_markets"] = {
+        "polymarket": fetch_polymarket(),
+        "kalshi":     fetch_kalshi(),
+    }
 
     # Anomaly detection (pure Python — always free)
     flags = detect_anomalies(data)

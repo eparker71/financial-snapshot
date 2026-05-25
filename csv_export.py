@@ -1,5 +1,6 @@
 """Export helpers for financial snapshot data."""
 
+import json
 import logging
 from datetime import datetime
 
@@ -168,6 +169,10 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
     flat["ai_analysis"]   = data.get("ai_analysis")
     flat["watch_item"]    = data.get("watch_item")
     flat["anomaly_alert"] = data.get("anomaly_alert")
+
+    # Prediction markets — store as JSON so the next day's run can compute deltas
+    pm = data.get("prediction_markets")
+    flat["prediction_markets_json"] = json.dumps(pm) if pm else None
 
     return flat
 

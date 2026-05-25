@@ -1,13 +1,140 @@
 """Defines shared snapshot section and row schema for HTML and plain-text renderers."""
 
-from typing import Any, Dict, List
+import json
+import logging
+from typing import Any, Dict, List, Optional
 
 from render_utils import fmt_change, fmt_pct_change, fmt_price
 from render_utils import is_market_closed
 
+log = logging.getLogger(__name__)
+
 SnapshotData = Dict[str, Any]
 RowData = Dict[str, Any]
 SectionData = Dict[str, Any]
+
+
+def _load_previous_prediction_markets() -> Dict[str, float]:
+    """Return id -> headline_implied_pct map for the most recent prior snapshot.
+
+    Used to compute today's delta vs yesterday's prediction-market odds.
+    Returns {} on any DB / decode failure so rendering never breaks.
+    """
+    try:
+        from models import Snapshot
+        prev = (
+            Snapshot
+            .select(Snapshot.prediction_markets_json)
+            .where(Snapshot.prediction_markets_json.is_null(False))
+            .order_by(Snapshot.timestamp.desc())
+            .first()
+        )
+        if not prev or not prev.prediction_markets_json:
+            return {}
+        parsed = json.loads(prev.prediction_markets_json)
+        out: Dict[str, float] = {}
+        for platform_key in ("polymarket", "kalshi"):
+            for m in (parsed.get(platform_key) or {}).get("markets", []):
+                outcomes = m.get("outcomes") or []
+                if outcomes:
+                    out[m["id"]] = outcomes[0]["implied_pct"]
+        return out
+    except Exception as e:
+        log.warning(f"Failed to load previous prediction-market snapshot: {e}")
+        return {}
+
+
+def _short_title(title: str, max_len: int = 44) -> str:
+    title = (title or "").strip().rstrip("?")
+    return title if len(title) <= max_len else title[: max_len - 1].rstrip() + "…"
+
+
+def _fmt_volume(v: Optional[float]) -> str:
+    if not v:
+        return ""
+    if v >= 1_000_000:
+        return f"${v/1_000_000:.1f}M"
+    if v >= 1_000:
+        return f"${v/1_000:.0f}K"
+    return f"${v:.0f}"
+
+
+def _prediction_rows(markets: List[dict], prev_lookup: Dict[str, float]) -> List[RowData]:
+    """Render one row per market with headline outcome + delta vs yesterday."""
+    rows: List[RowData] = []
+    for m in markets:
+        outcomes = m.get("outcomes") or []
+        if not outcomes:
+            continue
+        top = outcomes[0]
+        value = f"{top['label']} @ {top['implied_pct']:.1f}%"
+
+        today_pct = top["implied_pct"]
+        prev_pct = prev_lookup.get(m["id"])
+        # Fall back to platform's own previous price (Kalshi exposes prev_price; Polymarket does not)
+        if prev_pct is None and top.get("prev_price") is not None:
+            prev_pct = top["prev_price"] * 100
+        change = ""
+        if prev_pct is not None:
+            delta = today_pct - prev_pct
+            sign = "+" if delta >= 0 else ""
+            change = f"({sign}{delta:.1f}pp vs prev)"
+
+        runner_up = ""
+        if len(outcomes) > 1:
+            ru = outcomes[1]
+            runner_up = f"next: {ru['label']} @ {ru['implied_pct']:.1f}% · "
+        vol = _fmt_volume(m.get("volume_usd"))
+        end = m.get("end_date") or ""
+        sub_parts = []
+        if runner_up:
+            sub_parts.append(runner_up.rstrip(" ·"))
+        if vol:
+            sub_parts.append(f"vol {vol}/24h")
+        if end:
+            sub_parts.append(f"ends {end}")
+        sub = " · ".join(sub_parts)
+
+        rows.append({
+            "label":  _short_title(m.get("title", "")),
+            "value":  value,
+            "change": change,
+            "sub":    sub,
+            "invert": False,  # bullish-BTC markets: higher implied prob = green
+        })
+    return rows
+
+
+def _build_prediction_sections(data: SnapshotData) -> List[SectionData]:
+    """Build 0-2 sections (Polymarket, Kalshi) for the prediction-markets block.
+
+    Returns empty list if no prediction data is present in the snapshot dict at all.
+    A platform with a fetch error still gets a section with a placeholder note.
+    """
+    pm = data.get("prediction_markets") or {}
+    if not pm:
+        return []
+
+    prev_lookup = _load_previous_prediction_markets()
+    sections: List[SectionData] = []
+
+    for platform_key, title in (("polymarket", "🔮 Polymarket — BTC"),
+                                 ("kalshi",     "🎲 Kalshi — BTC")):
+        block = pm.get(platform_key) or {}
+        markets = block.get("markets") or []
+        rows = _prediction_rows(markets, prev_lookup)
+        if not rows:
+            err = block.get("error") or f"{platform_key.title()} data unavailable"
+            rows = [{
+                "label":  err,
+                "value":  "",
+                "change": "",
+                "sub":    "",
+                "invert": False,
+            }]
+        sections.append({"title": title, "rows": rows})
+
+    return sections
 
 
 def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = None) -> List[SectionData]:
@@ -325,6 +452,9 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
         ]})
         sections.insert(2, {"title": "💎 Magnificent 7", "rows": mag7_rows})
         sections.insert(3, {"title": "📊 Sector Performance", "rows": sector_rows})
+
+    # Prediction Markets — slot between live market data and everyday-economy section
+    sections.extend(_build_prediction_sections(data))
 
     # Consumer Prices
     eggs_val, eggs_mom, eggs_date = data.get("ev_eggs", (None, None, None))

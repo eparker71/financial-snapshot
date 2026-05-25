@@ -203,6 +203,9 @@ class Snapshot(BaseModel):
     watch_item     = TextField(null=True)
     anomaly_alert  = TextField(null=True)
 
+    # Prediction markets — JSON-encoded list of normalized Polymarket + Kalshi markets
+    prediction_markets_json = TextField(null=True)
+
     class Meta:
         table_name = "snapshots"
 
@@ -233,6 +236,7 @@ def _migrate_add_columns():
         ("xlre_price", "REAL"), ("xlre_change", "REAL"), ("xlre_change_pct", "REAL"),
         ("xlu_price", "REAL"), ("xlu_change", "REAL"), ("xlu_change_pct", "REAL"),
         ("xle_price", "REAL"), ("xle_change", "REAL"), ("xle_change_pct", "REAL"),
+        ("prediction_markets_json", "TEXT"),
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing:
