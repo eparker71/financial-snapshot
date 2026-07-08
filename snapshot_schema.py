@@ -347,12 +347,12 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
 
     # Sector ETFs
     sector_etfs = [
-        ("Technology",              "xlk"),
+        ("Semiconductors",          "smh"),
         ("Communication Services",  "xlc"),
-        ("Consumer Discretionary",  "xly"),
+        ("Homebuilders",            "xhb"),
         ("Consumer Staples",        "xlp"),
-        ("Health Care",             "xlv"),
-        ("Financials",              "xlf"),
+        ("Biotech",                 "xbi"),
+        ("Regional Banks",          "kre"),
         ("Industrials",             "xli"),
         ("Materials",               "xlb"),
         ("Real Estate",             "xlre"),

@@ -137,24 +137,12 @@ class Snapshot(BaseModel):
     nvda_change_pct  = FloatField(null=True)
 
     # Sector ETFs
-    xlk_price       = FloatField(null=True)
-    xlk_change      = FloatField(null=True)
-    xlk_change_pct  = FloatField(null=True)
     xlc_price       = FloatField(null=True)
     xlc_change      = FloatField(null=True)
     xlc_change_pct  = FloatField(null=True)
-    xly_price       = FloatField(null=True)
-    xly_change      = FloatField(null=True)
-    xly_change_pct  = FloatField(null=True)
     xlp_price       = FloatField(null=True)
     xlp_change      = FloatField(null=True)
     xlp_change_pct  = FloatField(null=True)
-    xlv_price       = FloatField(null=True)
-    xlv_change      = FloatField(null=True)
-    xlv_change_pct  = FloatField(null=True)
-    xlf_price       = FloatField(null=True)
-    xlf_change      = FloatField(null=True)
-    xlf_change_pct  = FloatField(null=True)
     xli_price       = FloatField(null=True)
     xli_change      = FloatField(null=True)
     xli_change_pct  = FloatField(null=True)
@@ -170,6 +158,20 @@ class Snapshot(BaseModel):
     xle_price       = FloatField(null=True)
     xle_change      = FloatField(null=True)
     xle_change_pct  = FloatField(null=True)
+
+    # Industry ETFs (replace broader sector ETFs for Technology, Health Care, Financials, Consumer Discretionary)
+    smh_price       = FloatField(null=True)
+    smh_change      = FloatField(null=True)
+    smh_change_pct  = FloatField(null=True)
+    xbi_price       = FloatField(null=True)
+    xbi_change      = FloatField(null=True)
+    xbi_change_pct  = FloatField(null=True)
+    kre_price       = FloatField(null=True)
+    kre_change      = FloatField(null=True)
+    kre_change_pct  = FloatField(null=True)
+    xhb_price       = FloatField(null=True)
+    xhb_change      = FloatField(null=True)
+    xhb_change_pct  = FloatField(null=True)
 
     # Consumer Prices
     eggs_price      = FloatField(null=True)
@@ -237,6 +239,10 @@ def _migrate_add_columns():
         ("xlu_price", "REAL"), ("xlu_change", "REAL"), ("xlu_change_pct", "REAL"),
         ("xle_price", "REAL"), ("xle_change", "REAL"), ("xle_change_pct", "REAL"),
         ("prediction_markets_json", "TEXT"),
+        ("smh_price", "REAL"), ("smh_change", "REAL"), ("smh_change_pct", "REAL"),
+        ("xbi_price", "REAL"), ("xbi_change", "REAL"), ("xbi_change_pct", "REAL"),
+        ("kre_price", "REAL"), ("kre_change", "REAL"), ("kre_change_pct", "REAL"),
+        ("xhb_price", "REAL"), ("xhb_change", "REAL"), ("xhb_change_pct", "REAL"),
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing:

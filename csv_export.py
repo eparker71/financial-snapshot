@@ -124,7 +124,14 @@ def flatten_data_for_csv(data: dict, timestamp: datetime) -> dict:
         flat[f"{ticker}_change_pct"] = pct
 
     # Sector ETFs
-    for ticker in ("xlk", "xlc", "xly", "xlp", "xlv", "xlf", "xli", "xlb", "xlre", "xlu", "xle"):
+    for ticker in ("xlc", "xlp", "xli", "xlb", "xlre", "xlu", "xle"):
+        p, c, pct = data.get(ticker, (None, None, None))
+        flat[f"{ticker}_price"] = p
+        flat[f"{ticker}_change"] = c
+        flat[f"{ticker}_change_pct"] = pct
+
+    # Industry ETFs
+    for ticker in ("smh", "xbi", "kre", "xhb"):
         p, c, pct = data.get(ticker, (None, None, None))
         flat[f"{ticker}_price"] = p
         flat[f"{ticker}_change"] = c

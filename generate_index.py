@@ -445,12 +445,12 @@ def render_html(snap, news, entries, firm_insights=None):
         )
 
         sector_etfs = [
-            ("Technology",             "xlk"),
+            ("Semiconductors",          "smh"),
             ("Communication Svcs",     "xlc"),
-            ("Consumer Discret.",       "xly"),
+            ("Homebuilders",            "xhb"),
             ("Consumer Staples",        "xlp"),
-            ("Health Care",             "xlv"),
-            ("Financials",              "xlf"),
+            ("Biotech",                 "xbi"),
+            ("Regional Banks",          "kre"),
             ("Industrials",             "xli"),
             ("Materials",               "xlb"),
             ("Real Estate",             "xlre"),
