@@ -29,7 +29,10 @@ def _fred_fetch(series_id: str, limit: int = 14) -> list[dict]:
         # Filter out FRED placeholder "." values for missing data
         return [o for o in obs if o.get("value") not in (".", "", None)]
     except Exception as e:
-        log.warning(f"FRED fetch error ({series_id}): {e}")
+        # Requests exception messages include the full URL — strip the API key
+        # before it lands in the log file.
+        msg = str(e).replace(FRED_API_KEY, "***") if FRED_API_KEY else str(e)
+        log.warning(f"FRED fetch error ({series_id}): {msg}")
         return []
 
 def _fred_mom(series_id: str):
@@ -93,8 +96,7 @@ def fetch_everyday_economy() -> dict:
     # ── GDP ───────────────────────────────────────────────────────────────────
     # Real GDP growth rate (QoQ annualized %) — the headline number people cite
     gdp_level, _, gdp_date   = _fred_mom("GDP")                  # level in $B
-    _, gdp_growth, _          = _fred_yoy("A191RL1Q225SBEA")     # real growth rate %
-    # For growth we want the latest value, not YoY — reuse _fred_mom
+    # For growth we want the latest reported value (QoQ annualized %), not YoY
     gdp_obs = _fred_fetch("A191RL1Q225SBEA", limit=2)
     gdp_growth_latest = float(gdp_obs[0]["value"]) if gdp_obs else None
     gdp_growth_prev   = float(gdp_obs[1]["value"]) if len(gdp_obs) > 1 else None

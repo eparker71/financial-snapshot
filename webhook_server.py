@@ -12,7 +12,6 @@ Run via systemd: see financial-snapshot-webhook.service
 
 import logging
 import os
-import re
 import time
 from datetime import datetime
 from email.utils import parseaddr

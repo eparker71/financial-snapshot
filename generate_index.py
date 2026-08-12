@@ -332,7 +332,6 @@ def card(title, icon, *rows):
 # ── Main renderer ─────────────────────────────────────────────────────────────
 
 def render_html(snap, news, entries, firm_insights=None):
-    now_str   = datetime.now().strftime("%b %-d, %Y · %-I:%M %p")
     snap_time = (snap.timestamp.strftime("%b %-d, %Y")
                  if snap and snap.timestamp else "no data yet")
     total = len(entries)
@@ -407,11 +406,11 @@ def render_html(snap, news, entries, firm_insights=None):
                 f'</div>'
             )
         ai_analysis_html = (
-            f'<div class="ai-card">'
-            f'<div class="ai-hd">AI Morning Briefing</div>'
+            '<div class="ai-card">'
+            '<div class="ai-hd">AI Morning Briefing</div>'
             + (f'<div class="ai-body">{html_lib.escape(snap.ai_analysis)}</div>' if snap.ai_analysis else "")
             + watch_html
-            + f'</div>'
+            + '</div>'
         )
 
     # ── Data cards ────────────────────────────────────────────────────────────
@@ -493,7 +492,7 @@ def render_html(snap, news, entries, firm_insights=None):
             dr("EUR/USD",         f"{snap.eurusd_price:.4f}" if snap.eurusd_price else "—",   fc(snap.eurusd_change_pct), live_key="eurusd") if snap.eurusd_price  else "",
             dr("USD/JPY",         f"¥{snap.usdjpy_price:.2f}" if snap.usdjpy_price else "—",  fc(snap.usdjpy_change_pct), live_key="usdjpy") if snap.usdjpy_price  else "",
             dr("10-Yr Treasury",  f"{snap.t10y_yield:.3f}%" if snap.t10y_yield else "—",      fc(snap.t10y_change_pct), invert=True, live_key="t10y") if snap.t10y_yield   else "",
-            dr("2-Yr Treasury",   f"{snap.t2y_yield:.3f}%"  if snap.t2y_yield  else "—",      fc(snap.t2y_change_pct),  invert=True, live_key="t2y")  if snap.t2y_yield    else "",
+            dr("13-Wk T-Bill",    f"{snap.t2y_yield:.3f}%"  if snap.t2y_yield  else "—",      fc(snap.t2y_change_pct),  invert=True, live_key="t2y")  if snap.t2y_yield    else "",
             dr("30-Yr Mortgage",  f"{snap.mortgage_rate:.2f}%")                                                                                         if snap.mortgage_rate else "",
             dr("Credit Card APR", f"{snap.credit_card_apr:.2f}%")                                                                                       if snap.credit_card_apr else "",
         )

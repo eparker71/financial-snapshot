@@ -35,6 +35,9 @@ def fetch_yahoo_data():
         "oil":     "CL=F",
         "usdjpy":  "JPY=X",
         "eurusd":  "EURUSD=X",
+        # NOTE: ^IRX is the 13-week T-bill yield, not a 2-year rate. Yahoo has no
+        # 2-year yield symbol (2YY=F was delisted), so the "t2y" key is kept for
+        # DB-column compatibility but must be labeled "13-Week T-Bill" in UIs.
         "t2y":     "^IRX",
         "t10y":    "^TNX",
         # Futures (shown when market closed)

@@ -14,10 +14,11 @@ RowData = Dict[str, Any]
 SectionData = Dict[str, Any]
 
 
-def _load_previous_prediction_markets() -> Dict[str, float]:
-    """Return id -> headline_implied_pct map for the most recent prior snapshot.
+def _load_previous_prediction_markets() -> Dict[tuple, float]:
+    """Return (market_id, outcome_label) -> implied_pct for the most recent prior snapshot.
 
-    Used to compute today's delta vs yesterday's prediction-market odds.
+    Keyed per outcome so today's headline outcome is compared against the SAME
+    strike bucket yesterday, even if a different bucket led then.
     Returns {} on any DB / decode failure so rendering never breaks.
     """
     try:
@@ -32,12 +33,11 @@ def _load_previous_prediction_markets() -> Dict[str, float]:
         if not prev or not prev.prediction_markets_json:
             return {}
         parsed = json.loads(prev.prediction_markets_json)
-        out: Dict[str, float] = {}
+        out: Dict[tuple, float] = {}
         for platform_key in ("polymarket", "kalshi"):
             for m in (parsed.get(platform_key) or {}).get("markets", []):
-                outcomes = m.get("outcomes") or []
-                if outcomes:
-                    out[m["id"]] = outcomes[0]["implied_pct"]
+                for o in m.get("outcomes") or []:
+                    out[(m["id"], o["label"])] = o["implied_pct"]
         return out
     except Exception as e:
         log.warning(f"Failed to load previous prediction-market snapshot: {e}")
@@ -59,7 +59,7 @@ def _fmt_volume(v: Optional[float]) -> str:
     return f"${v:.0f}"
 
 
-def _prediction_rows(markets: List[dict], prev_lookup: Dict[str, float]) -> List[RowData]:
+def _prediction_rows(markets: List[dict], prev_lookup: Dict[tuple, float]) -> List[RowData]:
     """Render one row per market with headline outcome + delta vs yesterday."""
     rows: List[RowData] = []
     for m in markets:
@@ -70,7 +70,7 @@ def _prediction_rows(markets: List[dict], prev_lookup: Dict[str, float]) -> List
         value = f"{top['label']} @ {top['implied_pct']:.1f}%"
 
         today_pct = top["implied_pct"]
-        prev_pct = prev_lookup.get(m["id"])
+        prev_pct = prev_lookup.get((m["id"], top["label"]))
         # Fall back to platform's own previous price (Kalshi exposes prev_price; Polymarket does not)
         if prev_pct is None and top.get("prev_price") is not None:
             prev_pct = top["prev_price"] * 100
@@ -140,7 +140,6 @@ def _build_prediction_sections(data: SnapshotData) -> List[SectionData]:
 def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = None) -> List[SectionData]:
     if market_closed is None:
         market_closed = is_market_closed()
-    market_open = not market_closed
 
     sections: List[SectionData] = []
 
@@ -277,15 +276,15 @@ def build_snapshot_sections(data: SnapshotData, market_closed: bool | None = Non
 
     bond_rows: List[RowData] = [
         {
-            "label": "US 2-Year Treasury",
-            "value": f"{t2_p:.3f}%" if t2_p else "N/A",
+            "label": "US 13-Week T-Bill",
+            "value": f"{t2_p:.3f}%" if t2_p is not None else "N/A",
             "change": fmt_change(t2_c, t2_pct, 3),
             "sub": "",
             "invert": True,
         },
         {
             "label": "US 10-Year Treasury",
-            "value": f"{t10_p:.3f}%" if t10_p else "N/A",
+            "value": f"{t10_p:.3f}%" if t10_p is not None else "N/A",
             "change": fmt_change(t10_c, t10_pct, 3),
             "sub": "",
             "invert": True,

@@ -41,6 +41,6 @@ webhook = client.webhooks.create(
     inbox_ids=[AGENTMAIL_INBOX_ID],
 )
 
-print(f"Webhook registered successfully.")
+print("Webhook registered successfully.")
 print(f"  ID:  {webhook.webhook_id}")
 print(f"  URL: {url}")

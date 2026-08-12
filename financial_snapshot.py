@@ -56,11 +56,15 @@ def detect_anomalies(data: dict) -> list[str]:
         """Safely pull a value from a (price, change, pct) tuple stored under key."""
         return (data.get(key) or (None, None, None))[idx]
 
+    def _first(*vals):
+        """First value that is not None — unlike `or`, a legitimate 0.0 wins."""
+        return next((v for v in vals if v is not None), None)
+
     # Equity indices — flag ≥ ±2% (S&P/Dow) or ≥ ±2.5% (Nasdaq)
-    sp_c  = _c("gspc")  or _c("sp500")
-    dj_c  = _c("dji")   or _c("dow")
-    nq_c  = _c("ndx")   or _c("nasdaq")
-    rut_c = _c("rut")   or _c("russell")
+    sp_c  = _first(_c("gspc"), _c("sp500"))
+    dj_c  = _first(_c("dji"),  _c("dow"))
+    nq_c  = _first(_c("ndx"),  _c("nasdaq"))
+    rut_c = _first(_c("rut"),  _c("russell"))
     for name, val, thresh in [
         ("S&P 500",      sp_c,  2.0),
         ("Dow Jones",    dj_c,  2.0),
@@ -182,12 +186,18 @@ def generate_market_analysis(data: dict) -> dict:
         def _v(val, fmt=".2f"):
             return f"{val:{fmt}}" if val is not None else "N/A"
 
-        sp_p  = data.get("gspc", (None,))[0] or data.get("sp500", (None,))[0]
-        sp_c  = (data.get("gspc") or (None, None, None))[2] or (data.get("sp500") or (None, None, None))[2]
-        dj_p  = data.get("dji",  (None,))[0] or data.get("dow",  (None,))[0]
-        dj_c  = (data.get("dji")  or (None, None, None))[2] or (data.get("dow")  or (None, None, None))[2]
-        nq_p  = data.get("ndx",  (None,))[0] or data.get("nasdaq", (None,))[0]
-        nq_c  = (data.get("ndx")  or (None, None, None))[2] or (data.get("nasdaq") or (None, None, None))[2]
+        def _t(key, idx):
+            return (data.get(key) or (None, None, None))[idx]
+
+        def _first(*vals):
+            return next((v for v in vals if v is not None), None)
+
+        sp_p  = _first(_t("gspc", 0), _t("sp500", 0))
+        sp_c  = _first(_t("gspc", 2), _t("sp500", 2))
+        dj_p  = _first(_t("dji", 0),  _t("dow", 0))
+        dj_c  = _first(_t("dji", 2),  _t("dow", 2))
+        nq_p  = _first(_t("ndx", 0),  _t("nasdaq", 0))
+        nq_c  = _first(_t("ndx", 2),  _t("nasdaq", 2))
 
         fg_val, fg_lbl = data.get("fear_greed", (None, None))
         btc_p,  btc_c  = data.get("btc_price"), data.get("btc_change_pct")
@@ -434,16 +444,21 @@ def main():
         except requests.RequestException as e:
             status = e.response.status_code if getattr(e, "response", None) is not None else "N/A"
             log.error(f"Failed to send to {addr}: {status} {e}")
-    
+        except Exception as e:
+            log.error(f"Failed to send to {addr}: {e}")
+
     if CREATE_HTML_OUTPUT_FILE and HTML_OUTPUT_DIR:
         try:
+            # The archive is publicly linked from the dashboard — never embed
+            # per-recipient unsubscribe links (email + WEBHOOK_SECRET) in it.
+            archive_html = build_html(data, now, HTML_ROOT_URL, "")
             os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
             filename = f"{HTML_OUTPUT_DIR}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             with open(filename, "w", encoding="utf-8") as f:
-                f.write(html)
+                f.write(archive_html)
                 log.info(f"Saved HTML output to {filename}")
                 print(f"✓ Saved HTML output to {filename}")
-        except OSError as e:
+        except Exception as e:
             log.error(f"Failed to write HTML file: {e}")
             print(f"✗ Failed to save HTML output: {e}")
     

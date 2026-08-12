@@ -44,7 +44,11 @@ def _monthly_event_ticker() -> str:
 
 
 def _event_config() -> dict:
-    """Event tickers we want to fetch. Map of human label -> Kalshi event_ticker."""
+    """Event tickers we want to fetch. Map of human label -> Kalshi event_ticker.
+
+    WARNING: annual_high and above_200k encode the year and stop resolving after
+    Jan 2027 — update them annually (the run only logs a warning when they die).
+    """
     return {
         "annual_high":   "KXBTCMAXY-26DEC31",       # Multi-outcome: highest strike BTC hits in 2026
         "eoy_level":     "KXBTCY-27JAN0100",        # Multi-outcome: BTC closing price at end of 2026

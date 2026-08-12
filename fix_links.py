@@ -14,7 +14,6 @@ Usage:
     python fix_links.py /path/to/snapshots  # specified directory
 """
 
-import os
 import re
 import sys
 from pathlib import Path

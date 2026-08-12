@@ -44,10 +44,10 @@ def _slug_config() -> dict:
             # Date-bucketed "when will BTC hit 150K" event
             "when_150k":     "when-will-bitcoin-hit-150k",
         },
-        "markets": {
-            # Single-binary 150K market (top Polymarket BTC volume as of 2026)
-            "150k_binary": "will-bitcoin-hit-150k-by-june-30-2026",
-        },
+        # No single-binary markets currently: the dated 150K binary
+        # (will-bitcoin-hit-150k-by-june-30-2026) expired and Polymarket's API
+        # no longer returns it. The when_150k event covers the same question.
+        "markets": {},
     }
 
 
