@@ -201,7 +201,7 @@ Each portfolio covers four strategies: Dividend Income, Aggressive Growth, Moder
 
 The Mac must be awake at that time (e.g. `sudo pmset repeat wakeorpoweron MTWRF 06:55:00`). No need to export API keys — the app loads `.env` automatically.
 
-**One-time GitHub Pages setup:** run `./publish_pages.sh` once to create the `gh-pages` branch, then in the repo's Settings → Pages choose "Deploy from branch → gh-pages / (root)" and set the custom domain `mktpulse.online` (the script writes the `CNAME` file). Point the domain's DNS at GitHub Pages.
+**One-time GitHub Pages setup:** run `./publish_pages.sh` once to create the `gh-pages` branch, then in the repo's Settings → Pages choose "Deploy from branch → gh-pages / (root)" and point the domain's DNS at GitHub Pages, then set `PAGES_CNAME=mktpulse.online` in the cron environment (or `export` it before running `publish_pages.sh`) so the script writes the `CNAME` file. Until then the custom domain stays off.
 
 Subscribers are managed directly in the `User` table of `db.sqlite3`; there is no web signup or unsubscribe link.
 

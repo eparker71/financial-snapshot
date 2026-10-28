@@ -4,7 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-CNAME_DOMAIN="mktpulse.online"   # remove if not using a custom domain
+# Custom domain is opt-in: set PAGES_CNAME=mktpulse.online once DNS points at GitHub Pages.
+CNAME_DOMAIN="${PAGES_CNAME:-}"
 
 if [ ! -d .pages ]; then
   git fetch origin gh-pages 2>/dev/null || true
@@ -17,8 +18,8 @@ if [ ! -d .pages ]; then
   fi
 fi
 
-rsync -a --delete --exclude '.git' html/ .pages/
-[ -n "$CNAME_DOMAIN" ] && echo "$CNAME_DOMAIN" > .pages/CNAME
+rsync -a --delete --exclude '.git' --exclude CNAME html/ .pages/
+if [ -n "$CNAME_DOMAIN" ]; then echo "$CNAME_DOMAIN" > .pages/CNAME; fi
 touch .pages/.nojekyll
 
 cd .pages
