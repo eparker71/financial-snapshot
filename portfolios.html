@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Advisor &mdash; Market Pulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #21262d;
+      --border:  rgba(240,246,252,0.10);
+      --border2: rgba(240,246,252,0.18);
+      --t1:      #e6edf3;
+      --t2:      #8b949e;
+      --t3:      #484f58;
+      --accent:  #388bfd;
+      --up:      #3fb950;
+      --dn:      #f85149;
+      --r:       8px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--t1);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Top bar ──────────────────────────────────────── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tb-left  { display: flex; align-items: center; gap: 12px; }
+    .tb-logo  { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
+    .tb-badge {
+      font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+      background: var(--bg3); color: var(--t2); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .tb-right { display: flex; align-items: center; gap: 16px; }
+    .tb-back {
+      font-size: 13px; font-weight: 500; color: var(--t2);
+      padding: 6px 14px; border: 1px solid var(--border);
+      border-radius: 6px; transition: border-color .15s, color .15s;
+    }
+    .tb-back:hover { border-color: var(--border2); color: var(--t1); }
+
+    /* ── Page wrapper ─────────────────────────────────── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    /* ── Page header ──────────────────────────────────── */
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 {
+      font-size: 22px; font-weight: 600; color: var(--t1);
+      letter-spacing: -.3px; margin-bottom: 6px;
+    }
+    .page-header p { color: var(--t2); font-size: 13px; }
+    .meta-pills {
+      display: flex; flex-wrap: wrap;
+      gap: 6px; margin-top: 12px;
+    }
+    .pill {
+      font-size: 10px; font-weight: 600; padding: 3px 10px;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg2); color: var(--t2); letter-spacing: .04em;
+    }
+    .pill.green { border-color: rgba(63,185,80,.35); color: var(--up); background: rgba(63,185,80,.08); }
+
+    /* ── Brokerage tabs ───────────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 4px; margin-bottom: 24px;
+      border-bottom: 1px solid var(--border); padding-bottom: 0;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex-shrink: 0;
+      font-size: 13px; font-weight: 500; color: var(--t2);
+      padding: 8px 16px; border: none; background: none; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: var(--t1); }
+    .tab-btn.active { color: var(--t1); border-bottom-color: var(--accent); }
+
+    /* ── Warnings banner ──────────────────────────────── */
+    .warnings-banner {
+      margin-bottom: 20px;
+      background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3);
+      border-radius: var(--r); padding: 12px 16px;
+      font-size: 12px; color: #f85149;
+    }
+    .warnings-banner strong { display: block; margin-bottom: 4px; font-weight: 600; }
+    .warnings-banner ul { padding-left: 16px; }
+    .warnings-banner li { margin-bottom: 3px; }
+
+    /* ── Grid ─────────────────────────────────────────── */
+    .portfolio-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 820px) { .portfolio-grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ─────────────────────────────────────────── */
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color .15s;
+    }
+    .card:hover { border-color: var(--border2); }
+    .card-header { padding: 18px 20px 16px; }
+    .header-top  { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .card-name   { font-size: 15px; font-weight: 600; line-height: 1.3; flex: 1; color: #fff; }
+    .risk-badge  {
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; padding: 3px 9px; border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12);
+      white-space: nowrap; flex-shrink: 0; color: #fff;
+    }
+    .card-body {
+      padding: 18px 20px 20px; flex: 1;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .description { font-size: 13px; color: var(--t2); line-height: 1.65; }
+
+    /* Meta row */
+    .meta-row  { display: flex; gap: 20px; flex-wrap: wrap; }
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--t3); font-weight: 600;
+    }
+    .meta-value {
+      font-size: 15px; font-weight: 600; color: var(--t1);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .rebal-rationale {
+      font-size: 12px; color: var(--t2); line-height: 1.55;
+      padding: 8px 12px; background: var(--bg3);
+      border-radius: 6px; border-left: 3px solid var(--border2);
+    }
+
+    /* Allocation bar */
+    .section-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+      font-weight: 600; color: var(--t3); margin-bottom: 6px;
+    }
+    .alloc-bar {
+      display: flex; height: 14px; border-radius: 4px;
+      overflow: hidden; background: var(--bg3);
+    }
+    .bar-seg { transition: filter 0.15s; cursor: default; }
+    .bar-seg:hover { filter: brightness(1.15); }
+    .bar-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--t2); }
+    .legend-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+    /* Holdings table */
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th {
+      background: var(--bg3); padding: 7px 10px; text-align: left;
+      font-weight: 600; font-size: 10px; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--t2); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 8px 10px; border-bottom: 1px solid var(--border);
+      color: var(--t1); vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(240,246,252,.03); }
+    .ticker-cell {
+      font-weight: 600; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; white-space: nowrap; color: var(--accent);
+    }
+    .fund-name { color: var(--t2); }
+    .alloc-num, .er-num, .aum-num {
+      white-space: nowrap; font-family: 'JetBrains Mono', monospace;
+    }
+    .alloc-num { font-weight: 600; }
+    .aum-num   { color: var(--t2); }
+    .type-chip {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 4px;
+      background: var(--bg3); color: var(--t2); white-space: nowrap;
+      border: 1px solid var(--border);
+    }
+    .er-live-badge {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px;
+      background: rgba(63,185,80,.12); color: var(--up);
+      border: 1px solid rgba(63,185,80,.3);
+      margin-left: 4px; vertical-align: middle;
+    }
+    .wer-row {
+      padding: 8px 10px; background: var(--bg3);
+      border-top: 1px solid var(--border); font-size: 11px; color: var(--t2);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 4px;
+    }
+    .wer-row strong { color: var(--t1); font-weight: 600; }
+    .source-note { font-size: 10px; color: var(--t3); }
+
+    /* ── Disclaimer ───────────────────────────────────── */
+    .disclaimer {
+      margin: 40px 0 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 18px 22px;
+    }
+    .disclaimer h3 {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--t3); margin-bottom: 8px;
+    }
+    .disclaimer p { font-size: 12px; color: var(--t2); line-height: 1.7; }
+    .disclaimer p + p { margin-top: 6px; }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 640px) {
+      .topbar { padding: 0 16px; }
+      .page   { padding: 20px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="tb-left">
+    <span class="tb-logo">&#128200; Market Pulse</span>
+    <span class="tb-badge">Portfolio Advisor</span>
+  </div>
+  <div class="tb-right">
+    <a href="index.html" class="tb-back">&#8592; Dashboard</a>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1>AI Portfolio Advisor</h1>
+    <p>Four strategies per brokerage &middot; Generated by Claude &middot; Validated via Yahoo Finance</p>
+    <div class="meta-pills">
+      <span class="pill">Generated 2026-04-22 21:37 UTC</span>
+      <span class="pill green">&#10003; AUM &gt; $10B enforced</span>
+      <span class="pill green">&#10003; Broad-market only</span>
+      <span class="pill green">&#10003; Tax-efficient structure</span>
+    </div>
+  </div>
+
+  <div class="tab-bar" id="tab-bar"></div>
+  <div id="tab-warnings"></div>
+  <div class="portfolio-grid" id="grid"></div>
+
+  <footer class="disclaimer">
+    <h3>Important Disclaimer</h3>
+    <p>
+      This page was generated by an AI system (Anthropic Claude) and is provided for
+      <strong>informational and educational purposes only</strong>. It does not constitute
+      financial, investment, tax, or legal advice, and must not be relied upon as the basis
+      for any investment decision. The portfolios shown are illustrative examples, not
+      personalised recommendations.
+    </p>
+    <p>
+      Investing involves risk, including the possible loss of principal. Past performance does not
+      guarantee future results. Expense ratios and AUM figures are sourced from Yahoo Finance at the
+      time of generation; verify current values with the fund provider before investing.
+    </p>
+    <p>
+      Always consult a qualified, licensed financial advisor before making any investment decisions.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+const ALL_DATA = [
+  {
+    "key": "fidelity",
+    "label": "Fidelity",
+    "portfolios": [
+      {
+        "id": "dividend-income",
+        "name": "Dividend Income",
+        "description": "This portfolio targets reliable income generation through high-yield dividend ETFs and broad market funds with strong dividend histories. It emphasises large-cap, dividend-paying companies across domestic and international markets to provide steady cash flow. The strategy suits income-focused investors who can tolerate moderate equity volatility in exchange for above-average yield.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "4–6%",
+        "rebalancingFrequency": "Semi-Annually",
+        "rebalancingRationale": "Semi-annual rebalancing captures dividend-driven drift without incurring excessive transaction costs or short-term capital gains on income-producing positions.",
+        "holdings": [
+          {
+            "ticker": "VYM",
+            "name": "Vanguard High Dividend Yield ETF",
+            "allocation": 30,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "VYM tracks the FTSE High Dividend Yield Index, offering broad exposure to large-cap dividend payers with a low expense ratio and over $50B in AUM, making it the core income engine of this portfolio.",
+            "validated": true,
+            "aum": 88722817024,
+            "liveFullName": "Vanguard High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "DGRO",
+            "name": "iShares Core Dividend Growth ETF",
+            "allocation": 25,
+            "expenseRatio": 0.08,
+            "type": "ETF",
+            "rationale": "DGRO focuses on companies with a consistent history of growing dividends, providing a quality tilt and income growth that can keep pace with inflation over time.",
+            "validated": true,
+            "aum": 37549682688,
+            "liveFullName": "iShares Core Dividend Growth ETF"
+          },
+          {
+            "ticker": "FXAIX",
+            "name": "Fidelity 500 Index Fund",
+            "allocation": 20,
+            "expenseRatio": 0.015,
+            "type": "Index Fund",
+            "rationale": "FXAIX provides ultra-low-cost S&P 500 exposure at Fidelity, anchoring the portfolio in large-cap equities and supplementing dividend income with capital appreciation potential.",
+            "validated": true,
+            "aum": 714927964160,
+            "liveFullName": "Fidelity 500 Index"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "IEFA adds international developed-market dividend exposure, which historically yields more than U.S. equities, and trades commission-free at Fidelity.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          },
+          {
+            "ticker": "AGG",
+            "name": "iShares Core U.S. Aggregate Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "AGG provides a stabilising bond allocation that generates additional income and reduces overall portfolio volatility, trading commission-free at Fidelity.",
+            "validated": true,
+            "aum": 138698178560,
+            "liveFullName": "iShares Core U.S. Aggregate Bond ETF"
+          }
+        ]
+      },
+      {
+        "id": "aggressive-growth",
+        "name": "Aggressive Growth",
+        "description": "This portfolio maximises long-term capital appreciation through a heavy equity allocation with deliberate tilts toward small/mid-cap and international markets. It accepts elevated short-term volatility in pursuit of above-market returns over a 10+ year horizon. Fidelity ZERO funds are used extensively to eliminate expense ratios wherever possible.",
+        "riskLevel": "Very High",
+        "expectedAnnualReturn": "8–11%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing minimises taxable events and transaction friction while still correcting meaningful drift in an equity-heavy portfolio with higher expected volatility.",
+        "holdings": [
+          {
+            "ticker": "FZROX",
+            "name": "Fidelity ZERO Total Market Index Fund",
+            "allocation": 35,
+            "expenseRatio": 0.0,
+            "type": "Index Fund",
+            "rationale": "FZROX offers zero-cost exposure to the entire U.S. equity market including small and mid caps; note this fund is non-transferable in-kind to other brokerages, so investors should weigh portability before investing.",
+            "validated": true,
+            "aum": 32445663232,
+            "liveFullName": "Fidelity ZERO Total Market Index"
+          },
+          {
+            "ticker": "FZILX",
+            "name": "Fidelity ZERO International Index Fund",
+            "allocation": 25,
+            "expenseRatio": 0.0,
+            "type": "Index Fund",
+            "rationale": "FZILX provides zero-cost international developed and emerging market exposure, broadening geographic diversification; like all Fidelity ZERO funds it cannot be transferred in-kind to another brokerage.",
+            "validated": true,
+            "aum": 9763173376,
+            "liveFullName": "Fidelity ZERO International Index"
+          },
+          {
+            "ticker": "FZIPX",
+            "name": "Fidelity ZERO Extended Market Index Fund",
+            "allocation": 20,
+            "expenseRatio": 0.0,
+            "type": "Index Fund",
+            "rationale": "FZIPX tilts the portfolio toward small and mid-cap U.S. stocks at zero cost, capturing the historical small-cap size premium; the same Fidelity-only portability caveat applies.",
+            "validated": true,
+            "aum": 2176148224,
+            "liveFullName": "Fidelity ZERO Extended Market Index"
+          },
+          {
+            "ticker": "IEMG",
+            "name": "iShares Core MSCI Emerging Markets ETF",
+            "allocation": 15,
+            "expenseRatio": 0.09,
+            "type": "ETF",
+            "rationale": "IEMG provides dedicated emerging market equity exposure with over $60B in AUM, higher growth potential, and trades commission-free at Fidelity, complementing the international coverage of FZILX.",
+            "validated": true,
+            "aum": 134083567616,
+            "liveFullName": "iShares Core MSCI Emerging Markets ETF"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 5,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "A small IEFA allocation supplements international developed-market exposure with an ETF that can be transferred in-kind if the investor ever moves to another brokerage, partially offsetting ZERO fund portability risk.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          }
+        ]
+      },
+      {
+        "id": "moderate-growth",
+        "name": "Moderate Growth",
+        "description": "This balanced portfolio blends broad equity index funds with investment-grade bond exposure to target steady capital appreciation with meaningful downside protection. It is designed for investors with a 5–10 year horizon who want market participation without extreme volatility. Fidelity's ultra-low-cost proprietary funds anchor the equity sleeve, while core bond ETFs stabilise returns.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "5–7%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient for a balanced portfolio to restore target weights while keeping turnover low and deferring any capital gains as long as possible.",
+        "holdings": [
+          {
+            "ticker": "FXAIX",
+            "name": "Fidelity 500 Index Fund",
+            "allocation": 35,
+            "expenseRatio": 0.015,
+            "type": "Index Fund",
+            "rationale": "FXAIX is the ultra-low-cost core U.S. large-cap equity holding, tracking the S&P 500 with one of the lowest expense ratios available and over $400B in AUM.",
+            "validated": true,
+            "aum": 714927964160,
+            "liveFullName": "Fidelity 500 Index"
+          },
+          {
+            "ticker": "FZILX",
+            "name": "Fidelity ZERO International Index Fund",
+            "allocation": 20,
+            "expenseRatio": 0.0,
+            "type": "Index Fund",
+            "rationale": "FZILX adds zero-cost international diversification across developed and emerging markets; investors should note this Fidelity-only fund cannot be transferred in-kind to another brokerage.",
+            "validated": true,
+            "aum": 9763173376,
+            "liveFullName": "Fidelity ZERO International Index"
+          },
+          {
+            "ticker": "FSMAX",
+            "name": "Fidelity Extended Market Index Fund",
+            "allocation": 10,
+            "expenseRatio": 0.035,
+            "type": "Index Fund",
+            "rationale": "FSMAX captures U.S. mid and small-cap stocks outside the S&P 500 at very low cost, adding a growth tilt and completing broad U.S. market coverage alongside FXAIX.",
+            "validated": true,
+            "aum": 38824579072,
+            "liveFullName": "Fidelity Extended Market Index"
+          },
+          {
+            "ticker": "FXNAX",
+            "name": "Fidelity U.S. Bond Index Fund",
+            "allocation": 25,
+            "expenseRatio": 0.025,
+            "type": "Bond Fund",
+            "rationale": "FXNAX tracks the Bloomberg U.S. Aggregate Bond Index at near-zero cost, providing broad investment-grade bond exposure that anchors portfolio stability and reduces equity drawdown risk.",
+            "validated": true,
+            "aum": 68962492416,
+            "liveFullName": "Fidelity U.S. Bond Index"
+          },
+          {
+            "ticker": "IEMG",
+            "name": "iShares Core MSCI Emerging Markets ETF",
+            "allocation": 10,
+            "expenseRatio": 0.09,
+            "type": "ETF",
+            "rationale": "IEMG adds a modest allocation to higher-growth emerging markets, diversifying the international equity sleeve with a commission-free, highly liquid ETF at Fidelity.",
+            "validated": true,
+            "aum": 134083567616,
+            "liveFullName": "iShares Core MSCI Emerging Markets ETF"
+          }
+        ]
+      },
+      {
+        "id": "capital-preservation",
+        "name": "Capital Preservation",
+        "description": "This conservative portfolio prioritises protection of principal and stable income through a heavy allocation to investment-grade bonds and short-duration fixed income instruments. A small equity sleeve is included to provide modest inflation-beating returns without materially increasing volatility. It is best suited for investors with short time horizons or low risk tolerance.",
+        "riskLevel": "Low",
+        "expectedAnnualReturn": "2–4%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing maintains the conservative bond-heavy target allocation with minimal trading activity, preserving the low-turnover, tax-efficient character of the portfolio.",
+        "holdings": [
+          {
+            "ticker": "FXNAX",
+            "name": "Fidelity U.S. Bond Index Fund",
+            "allocation": 40,
+            "expenseRatio": 0.025,
+            "type": "Bond Fund",
+            "rationale": "FXNAX is the core holding, offering broad investment-grade U.S. bond market exposure at one of the lowest expense ratios available, providing stable income and principal protection.",
+            "validated": true,
+            "aum": 68962492416,
+            "liveFullName": "Fidelity U.S. Bond Index"
+          },
+          {
+            "ticker": "AGG",
+            "name": "iShares Core U.S. Aggregate Bond ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "AGG complements FXNAX with an ETF-structured aggregate bond exposure that trades commission-free at Fidelity and can be transferred in-kind if the investor changes brokerages.",
+            "validated": true,
+            "aum": 138698178560,
+            "liveFullName": "iShares Core U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "IEF",
+            "name": "iShares 7-10 Year Treasury Bond ETF",
+            "allocation": 20,
+            "expenseRatio": 0.15,
+            "type": "Bond Fund",
+            "rationale": "IEF provides dedicated intermediate-term U.S. Treasury exposure, which offers the highest credit quality and acts as a safe-haven asset during equity market stress, and trades commission-free at Fidelity.",
+            "validated": true,
+            "aum": 48925843456,
+            "liveFullName": "iShares 7-10 Year Treasury Bond ETF"
+          },
+          {
+            "ticker": "FXAIX",
+            "name": "Fidelity 500 Index Fund",
+            "allocation": 12,
+            "expenseRatio": 0.015,
+            "type": "Index Fund",
+            "rationale": "A small S&P 500 allocation provides modest long-term capital appreciation and inflation protection without meaningfully raising overall portfolio risk or volatility.",
+            "validated": true,
+            "aum": 714927964160,
+            "liveFullName": "Fidelity 500 Index"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 8,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "A small international developed-market allocation through IEFA adds geographic diversification to the equity sleeve at low cost, trading commission-free at Fidelity.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          }
+        ]
+      }
+    ],
+    "verified_at": "2026-04-22 21:38 UTC",
+    "warnings": []
+  },
+  {
+    "key": "vanguard",
+    "label": "Vanguard",
+    "portfolios": [
+      {
+        "id": "dividend-income",
+        "name": "Dividend Income",
+        "description": "This portfolio focuses on generating consistent income through high-quality dividend-paying equities, combining high-yield and dividend-growth strategies for a balance of current income and long-term purchasing power. It leverages Vanguard's ultra-low-cost dividend ETFs to maximise net yield after expenses. A modest bond allocation provides stability and supplemental income during equity market downturns.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "4–6%",
+        "rebalancingFrequency": "Semi-Annually",
+        "rebalancingRationale": "Semi-annual rebalancing captures meaningful drift in dividend-focused holdings without generating excessive taxable events, keeping turnover and transaction costs low.",
+        "holdings": [
+          {
+            "ticker": "VYM",
+            "name": "Vanguard High Dividend Yield ETF",
+            "allocation": 35,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Tracks the FTSE High Dividend Yield Index, providing broad exposure to high-yielding U.S. equities with a very low expense ratio and over $50B in AUM.",
+            "validated": true,
+            "aum": 88722817024,
+            "liveFullName": "Vanguard High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VIG",
+            "name": "Vanguard Dividend Appreciation ETF",
+            "allocation": 25,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Focuses on companies with a consistent history of dividend growth, providing quality tilt and inflation protection alongside steady income.",
+            "validated": true,
+            "aum": 117045436416,
+            "liveFullName": "Vanguard Dividend Appreciation Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VXUS",
+            "name": "Vanguard Total International Stock ETF",
+            "allocation": 15,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Adds international dividend exposure across developed and emerging markets, diversifying away from U.S.-only dividend concentration risk.",
+            "validated": true,
+            "aum": 582269730816,
+            "liveFullName": "Vanguard Total International Stock Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 15,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Provides broad U.S. investment-grade bond exposure as a stabilising anchor, reducing overall portfolio volatility while contributing supplemental income.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          },
+          {
+            "ticker": "VTIP",
+            "name": "Vanguard Short-Term Inflation-Protected Securities ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Protects the real value of income distributions against inflation, particularly important for income-oriented investors in rising-price environments.",
+            "validated": true,
+            "aum": 65838837760,
+            "liveFullName": "Vanguard Short-Term Inflation-Protected Securities Index Fund ETF Shares"
+          }
+        ]
+      },
+      {
+        "id": "aggressive-growth",
+        "name": "Aggressive Growth",
+        "description": "This portfolio is designed for investors with a long time horizon and high risk tolerance, tilting toward small- and mid-cap equities alongside broad international exposure to capture size and geographic premia. The portfolio is overwhelmingly equity-focused with no meaningful fixed-income allocation, accepting higher short-term volatility in pursuit of maximum long-term capital appreciation. Vanguard's low-cost index ETFs ensure that minimal fees erode the compounding of returns over time.",
+        "riskLevel": "Very High",
+        "expectedAnnualReturn": "8–11%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient for a long-horizon growth portfolio, limiting unnecessary taxable events while keeping the equity tilt roughly on target.",
+        "holdings": [
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 30,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Provides full U.S. market coverage including large-, mid-, and small-cap stocks, serving as the core domestic equity foundation at an industry-leading expense ratio.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VB",
+            "name": "Vanguard Small-Cap ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Overweights U.S. small-cap equities to capture the long-run size premium, complementing the broader VTI holding with a deliberate tilt toward higher-growth companies.",
+            "validated": true,
+            "aum": 164569923584,
+            "liveFullName": "Vanguard Small-Cap Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VO",
+            "name": "Vanguard Mid-Cap ETF",
+            "allocation": 15,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Adds a mid-cap tilt that historically delivers strong risk-adjusted returns, bridging the gap between large-cap stability and small-cap growth potential.",
+            "validated": true,
+            "aum": 198243745792,
+            "liveFullName": "Vanguard Mid-Cap Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VXUS",
+            "name": "Vanguard Total International Stock ETF",
+            "allocation": 25,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Delivers diversified exposure to over 7,000 non-U.S. stocks across developed and emerging markets, reducing home-country bias and expanding the opportunity set.",
+            "validated": true,
+            "aum": 582269730816,
+            "liveFullName": "Vanguard Total International Stock Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VWO",
+            "name": "Vanguard Emerging Markets Stock Index ETF",
+            "allocation": 10,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Tilts the international allocation further toward higher-growth emerging economies, adding return potential consistent with the portfolio's aggressive mandate.",
+            "validated": true,
+            "aum": 146314903552,
+            "liveFullName": "Vanguard Emerging Markets Stock Index Fund"
+          }
+        ]
+      },
+      {
+        "id": "moderate-growth",
+        "name": "Moderate Growth",
+        "description": "This balanced portfolio blends broad equity exposure with a meaningful fixed-income allocation, targeting steady long-term capital growth while cushioning against severe market downturns. The classic 60/40-style structure is implemented entirely through low-cost Vanguard index ETFs, keeping total portfolio costs well below 0.10%. International diversification on both the equity and bond sides reduces concentration in any single market or currency.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "5–7%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is well-suited to a balanced portfolio, restoring the equity-bond target ratio without triggering frequent taxable events or excessive transaction costs.",
+        "holdings": [
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Serves as the core U.S. equity engine, offering exposure to the entire domestic stock market at minimal cost with very low portfolio turnover.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VXUS",
+            "name": "Vanguard Total International Stock ETF",
+            "allocation": 20,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Complements the U.S. equity core with broad international diversification, reducing geographic concentration and capturing global growth opportunities.",
+            "validated": true,
+            "aum": 582269730816,
+            "liveFullName": "Vanguard Total International Stock Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Anchors the fixed-income sleeve with broad U.S. investment-grade bond exposure, dampening overall volatility and providing a counterweight to equity drawdowns.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Extends fixed-income diversification globally with currency-hedged international bonds, reducing correlation with U.S. interest rate movements.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          },
+          {
+            "ticker": "VTIP",
+            "name": "Vanguard Short-Term Inflation-Protected Securities ETF",
+            "allocation": 5,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Provides a small but meaningful inflation hedge within the bond sleeve, preserving real purchasing power during periods of elevated consumer prices.",
+            "validated": true,
+            "aum": 65838837760,
+            "liveFullName": "Vanguard Short-Term Inflation-Protected Securities Index Fund ETF Shares"
+          }
+        ]
+      },
+      {
+        "id": "capital-preservation",
+        "name": "Capital Preservation",
+        "description": "This portfolio prioritises the protection of capital and stability of principal above all else, allocating predominantly to high-quality investment-grade bonds and inflation-protected securities. A small equity allocation in a broad market ETF provides a modest growth buffer to help outpace inflation over time. All holdings are Vanguard index ETFs with extremely low expense ratios, ensuring that cost drag does not meaningfully erode the modest expected returns of a conservative strategy.",
+        "riskLevel": "Low",
+        "expectedAnnualReturn": "2–4%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is appropriate for a low-volatility portfolio where drift is slow and infrequent trading minimises transaction costs and taxable capital-gains events.",
+        "holdings": [
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Forms the core of the portfolio with broad U.S. investment-grade bond exposure, delivering steady income and strong capital stability at rock-bottom cost.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          },
+          {
+            "ticker": "VGSH",
+            "name": "Vanguard Short-Term Treasury ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Holds short-duration U.S. Treasury bonds with minimal interest rate sensitivity, sharply reducing the portfolio's vulnerability to rising rate environments.",
+            "validated": true,
+            "aum": 33368180736,
+            "liveFullName": "Vanguard Short-Term Treasury Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VTIP",
+            "name": "Vanguard Short-Term Inflation-Protected Securities ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Protects purchasing power against inflation with short-duration TIPS, a critical feature for capital preservation investors who cannot afford real-value erosion.",
+            "validated": true,
+            "aum": 65838837760,
+            "liveFullName": "Vanguard Short-Term Inflation-Protected Securities Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Adds currency-hedged international investment-grade bond exposure, providing geographic diversification within the fixed-income sleeve without introducing currency risk.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          },
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 5,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "A small equity allocation provides a minimal growth buffer to help the portfolio modestly outpace inflation over long periods without materially increasing volatility.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          }
+        ]
+      }
+    ],
+    "verified_at": "2026-04-22 21:39 UTC",
+    "warnings": []
+  },
+  {
+    "key": "schwab",
+    "label": "Schwab",
+    "portfolios": [
+      {
+        "id": "dividend-income",
+        "name": "Dividend Income",
+        "description": "This portfolio targets reliable income by concentrating in high-yield dividend ETFs with a tilt toward quality, dividend-growth companies. It blends U.S. dividend equities with international dividend exposure and a modest bond allocation to smooth income streams. The strategy prioritises low-cost, tax-efficient ETFs with strong dividend track records and broad diversification.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "4–6%",
+        "rebalancingFrequency": "Semi-Annually",
+        "rebalancingRationale": "Semi-annual rebalancing keeps allocations aligned with income objectives while minimising transaction costs and taxable events in a dividend-focused strategy.",
+        "holdings": [
+          {
+            "ticker": "SCHD",
+            "name": "Schwab U.S. Dividend Equity ETF",
+            "allocation": 40,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Core holding offering exposure to high-quality U.S. dividend-paying stocks with a strong track record of dividend growth at a rock-bottom expense ratio.",
+            "validated": true,
+            "aum": 84820000768,
+            "liveFullName": "Schwab U.S. Dividend Equity ETF"
+          },
+          {
+            "ticker": "VYM",
+            "name": "Vanguard High Dividend Yield ETF",
+            "allocation": 25,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Complements SCHD by tracking a broader universe of high-yield U.S. dividend stocks, adding diversification across dividend payers with massive AUM and low cost.",
+            "validated": true,
+            "aum": 88722817024,
+            "liveFullName": "Vanguard High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "SCHF",
+            "name": "Schwab International Equity ETF",
+            "allocation": 15,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Provides international developed-market equity exposure, capturing higher dividend yields typically found in European and Asian markets while diversifying currency risk.",
+            "validated": true,
+            "aum": 56551763968,
+            "liveFullName": "Schwab International Equity ETF"
+          },
+          {
+            "ticker": "SCHZ",
+            "name": "Schwab U.S. Aggregate Bond ETF",
+            "allocation": 12,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Adds bond income and reduces overall portfolio volatility, acting as a stabilising anchor for total income generation during equity market downturns.",
+            "validated": true,
+            "aum": 10019860480,
+            "liveFullName": "Schwab U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "SCHP",
+            "name": "Schwab U.S. TIPS ETF",
+            "allocation": 8,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Inflation-linked bonds protect the real purchasing power of income distributions, particularly important for retirees relying on dividend income.",
+            "validated": true,
+            "aum": 15662255104,
+            "liveFullName": "Schwab U.S. TIPS ETF"
+          }
+        ]
+      },
+      {
+        "id": "aggressive-growth",
+        "name": "Aggressive Growth",
+        "description": "Designed for long-horizon investors with high risk tolerance, this portfolio maximises growth through broad U.S. equity, small-cap, and international exposure including emerging markets. It deliberately tilts toward smaller and mid-sized companies to capture the historical size premium over the long run. Bond allocation is minimal, accepting higher volatility in pursuit of superior long-term capital appreciation.",
+        "riskLevel": "Very High",
+        "expectedAnnualReturn": "8–11%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing minimises capital-gains distributions and transaction costs while still maintaining the intended aggressive risk profile over a long investment horizon.",
+        "holdings": [
+          {
+            "ticker": "SCHB",
+            "name": "Schwab U.S. Broad Market ETF",
+            "allocation": 35,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Provides ultra-low-cost exposure to the entire U.S. equity market, forming the foundational large-cap growth core of the aggressive portfolio.",
+            "validated": true,
+            "aum": 36927254528,
+            "liveFullName": "Schwab U.S. Broad Market ETF"
+          },
+          {
+            "ticker": "SCHA",
+            "name": "Schwab U.S. Small-Cap ETF",
+            "allocation": 20,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Delivers a targeted small-cap tilt to capture the historically documented size premium, a key driver of excess returns in an aggressive growth strategy.",
+            "validated": true,
+            "aum": 19801763840,
+            "liveFullName": "Schwab U.S. Small-Cap ETF"
+          },
+          {
+            "ticker": "SCHF",
+            "name": "Schwab International Equity ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Broad developed-market international exposure diversifies country and currency risk while providing access to growth opportunities outside the U.S.",
+            "validated": true,
+            "aum": 56551763968,
+            "liveFullName": "Schwab International Equity ETF"
+          },
+          {
+            "ticker": "VWO",
+            "name": "Vanguard FTSE Emerging Markets ETF",
+            "allocation": 15,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Adds emerging-market exposure for higher long-term growth potential, tapping into faster-growing economies in Asia, Latin America, and beyond.",
+            "validated": true,
+            "aum": 146314903552,
+            "liveFullName": "Vanguard Emerging Markets Stock Index Fund"
+          },
+          {
+            "ticker": "SCHC",
+            "name": "Schwab International Small-Cap Equity ETF",
+            "allocation": 10,
+            "expenseRatio": 0.08,
+            "type": "ETF",
+            "rationale": "International small-cap allocation captures the combined size and international diversification premiums, enhancing long-term growth potential beyond large-cap-dominated indices.",
+            "validated": true,
+            "aum": 4986403840,
+            "liveFullName": "Schwab International Small-Cap Equity ETF"
+          }
+        ]
+      },
+      {
+        "id": "moderate-growth",
+        "name": "Moderate Growth",
+        "description": "A balanced portfolio blending broad equity and investment-grade bond exposure to deliver steady long-term growth with controlled volatility. The classic stock-bond blend targets investors in the accumulation phase who can tolerate moderate drawdowns but require some downside cushion. Low-cost Schwab and Vanguard index ETFs keep costs minimal while maintaining broad diversification across asset classes.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "5–7%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient to keep the equity-bond split near target without generating excessive taxable events, appropriate for a tax-sensitive accumulation strategy.",
+        "holdings": [
+          {
+            "ticker": "SCHB",
+            "name": "Schwab U.S. Broad Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Ultra-low-cost total U.S. market coverage forms the equity core, providing exposure to large, mid, and small-cap U.S. stocks in a single fund.",
+            "validated": true,
+            "aum": 36927254528,
+            "liveFullName": "Schwab U.S. Broad Market ETF"
+          },
+          {
+            "ticker": "SCHF",
+            "name": "Schwab International Equity ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Developed international equity diversifies geographic risk and improves long-run risk-adjusted returns by reducing U.S. concentration.",
+            "validated": true,
+            "aum": 56551763968,
+            "liveFullName": "Schwab International Equity ETF"
+          },
+          {
+            "ticker": "SCHZ",
+            "name": "Schwab U.S. Aggregate Bond ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Broad investment-grade U.S. bond exposure provides income stability and acts as a counterweight to equity volatility within the balanced allocation.",
+            "validated": true,
+            "aum": 10019860480,
+            "liveFullName": "Schwab U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "SCHP",
+            "name": "Schwab U.S. TIPS ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Inflation-protected treasuries safeguard real returns during inflationary periods, complementing the nominal bond allocation in SCHZ.",
+            "validated": true,
+            "aum": 15662255104,
+            "liveFullName": "Schwab U.S. TIPS ETF"
+          },
+          {
+            "ticker": "VWO",
+            "name": "Vanguard FTSE Emerging Markets ETF",
+            "allocation": 5,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "A small emerging-markets allocation adds long-term growth potential and geographic diversification without materially increasing overall portfolio risk.",
+            "validated": true,
+            "aum": 146314903552,
+            "liveFullName": "Vanguard Emerging Markets Stock Index Fund"
+          }
+        ]
+      },
+      {
+        "id": "capital-preservation",
+        "name": "Capital Preservation",
+        "description": "Built for capital safety and minimal volatility, this portfolio is heavily weighted toward short-duration treasuries, TIPS, and investment-grade bonds to protect principal while generating modest income. It is suited for investors with short time horizons, conservative risk profiles, or those approaching or in retirement. Equity exposure is kept to a small allocation to provide a modest inflation hedge without meaningfully increasing drawdown risk.",
+        "riskLevel": "Low",
+        "expectedAnnualReturn": "2–4%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is appropriate as the low-volatility bond-heavy allocation drifts slowly, requiring only infrequent adjustments to maintain the capital preservation objective.",
+        "holdings": [
+          {
+            "ticker": "SCHO",
+            "name": "Schwab Short-Term U.S. Treasury ETF",
+            "allocation": 35,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Short-duration U.S. Treasuries carry minimal interest-rate risk and near-zero credit risk, providing the safest possible liquid anchor for capital preservation.",
+            "validated": true,
+            "aum": 12451366912,
+            "liveFullName": "Schwab Short-Term U.S. Treasury ETF"
+          },
+          {
+            "ticker": "SCHZ",
+            "name": "Schwab U.S. Aggregate Bond ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Broad investment-grade bond market exposure adds income and moderate duration, diversifying across government, corporate, and mortgage-backed securities at minimal cost.",
+            "validated": true,
+            "aum": 10019860480,
+            "liveFullName": "Schwab U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "SCHP",
+            "name": "Schwab U.S. TIPS ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Inflation-linked treasuries protect the real value of capital against purchasing-power erosion, a core concern for capital preservation investors.",
+            "validated": true,
+            "aum": 15662255104,
+            "liveFullName": "Schwab U.S. TIPS ETF"
+          },
+          {
+            "ticker": "BIV",
+            "name": "Vanguard Intermediate-Term Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Adds intermediate-duration investment-grade exposure across government and corporate bonds, offering slightly higher yield than short-term bonds with modest duration risk.",
+            "validated": true,
+            "aum": 51797950464,
+            "liveFullName": "Vanguard Intermediate-Term Bond Index Fund"
+          },
+          {
+            "ticker": "SCHB",
+            "name": "Schwab U.S. Broad Market ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "A minimal broad U.S. equity allocation provides a long-run inflation hedge and modest growth potential without meaningfully compromising the capital preservation mandate.",
+            "validated": true,
+            "aum": 36927254528,
+            "liveFullName": "Schwab U.S. Broad Market ETF"
+          }
+        ]
+      }
+    ],
+    "verified_at": "2026-04-22 21:39 UTC",
+    "warnings": [
+      "SCHC: AUM $5.0B is below the $10B threshold"
+    ]
+  },
+  {
+    "key": "etrade",
+    "label": "E*TRADE",
+    "portfolios": [
+      {
+        "id": "dividend-income",
+        "name": "Dividend Income",
+        "description": "This portfolio targets steady income generation through high-yield and dividend-growth ETFs with broad market exposure. It emphasises large-cap dividend payers and investment-grade bond income to provide reliable cash flow with moderate capital preservation. The strategy suits income-focused investors comfortable with mild equity volatility.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "4–6%",
+        "rebalancingFrequency": "Semi-Annually",
+        "rebalancingRationale": "Semi-annual rebalancing captures meaningful drift in dividend-heavy equities without incurring excessive transaction costs or tax events in a yield-focused portfolio.",
+        "holdings": [
+          {
+            "ticker": "VYM",
+            "name": "Vanguard High Dividend Yield ETF",
+            "allocation": 30,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Provides broad exposure to high-dividend-yield U.S. large-cap stocks with one of the lowest expense ratios in its category and over $50B AUM.",
+            "validated": true,
+            "aum": 88722817024,
+            "liveFullName": "Vanguard High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "DGRO",
+            "name": "iShares Core Dividend Growth ETF",
+            "allocation": 25,
+            "expenseRatio": 0.08,
+            "type": "ETF",
+            "rationale": "Targets companies with a consistent history of dividend growth, offering a quality tilt and long-term income compounding alongside capital appreciation.",
+            "validated": true,
+            "aum": 37549682688,
+            "liveFullName": "iShares Core Dividend Growth ETF"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "Adds international developed-market dividend exposure and geographic diversification at a very low cost, available commission-free on E*TRADE.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          },
+          {
+            "ticker": "AGG",
+            "name": "iShares Core U.S. Aggregate Bond ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Anchors the portfolio with broad investment-grade U.S. bond income, reducing overall volatility and available commission-free on E*TRADE.",
+            "validated": true,
+            "aum": 138698178560,
+            "liveFullName": "iShares Core U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "VIG",
+            "name": "Vanguard Dividend Appreciation ETF",
+            "allocation": 10,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Tracks companies with at least ten consecutive years of dividend increases, adding quality and stability to complement the high-yield sleeve.",
+            "validated": true,
+            "aum": 117045436416,
+            "liveFullName": "Vanguard Dividend Appreciation Index Fund ETF Shares"
+          }
+        ]
+      },
+      {
+        "id": "aggressive-growth",
+        "name": "Aggressive Growth",
+        "description": "This portfolio maximises long-term capital appreciation through a diversified mix of U.S. total market, small-cap value, and international equities including emerging markets. The strategy tilts toward higher-returning factors such as small-cap and value while maintaining broad passive index exposure. It is designed for investors with a long time horizon and high tolerance for short-term drawdowns.",
+        "riskLevel": "Very High",
+        "expectedAnnualReturn": "8–11%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient for a long-horizon growth portfolio, minimising tax drag and transaction friction while keeping factor tilts on target.",
+        "holdings": [
+          {
+            "ticker": "ITOT",
+            "name": "iShares Core S&P Total U.S. Stock Market ETF",
+            "allocation": 35,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Provides ultra-low-cost exposure to the entire U.S. equity market as the core growth engine, available commission-free on E*TRADE.",
+            "validated": true,
+            "aum": 79621505024,
+            "liveFullName": "iShares Core S&P Total U.S. Stock Market ETF"
+          },
+          {
+            "ticker": "VBR",
+            "name": "Vanguard Small-Cap Value ETF",
+            "allocation": 20,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Tilts toward the small-cap value factor, historically associated with higher long-run returns, adding a meaningful return premium over the broad market.",
+            "validated": true,
+            "aum": 60633391104,
+            "liveFullName": "Vanguard Small-Cap Value Index Fund ETF Shares"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 20,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "Delivers broad developed international exposure at minimal cost, diversifying away from U.S.-only risk and available commission-free on E*TRADE.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          },
+          {
+            "ticker": "IEMG",
+            "name": "iShares Core MSCI Emerging Markets ETF",
+            "allocation": 15,
+            "expenseRatio": 0.09,
+            "type": "ETF",
+            "rationale": "Captures higher-growth emerging market economies to boost long-term return potential, with commission-free access on E*TRADE and over $60B AUM.",
+            "validated": true,
+            "aum": 134083567616,
+            "liveFullName": "iShares Core MSCI Emerging Markets ETF"
+          },
+          {
+            "ticker": "IJH",
+            "name": "iShares Core S&P Mid-Cap ETF",
+            "allocation": 10,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Adds dedicated mid-cap exposure, a segment historically outperforming large-caps over full market cycles with ample liquidity and over $80B AUM.",
+            "validated": true,
+            "aum": 106048217088,
+            "liveFullName": "iShares Core S&P Mid-Cap ETF"
+          }
+        ]
+      },
+      {
+        "id": "moderate-growth",
+        "name": "Moderate Growth",
+        "description": "This balanced portfolio blends broad U.S. and international equities with investment-grade bond exposure to deliver steady long-term growth while dampening volatility. The roughly 65/35 equity-to-bond split targets a middle path between capital appreciation and capital preservation. It is well-suited for investors with a medium time horizon and moderate risk tolerance.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "5–7%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing maintains the target equity-bond ratio efficiently while avoiding the tax drag and trading costs of more frequent adjustments.",
+        "holdings": [
+          {
+            "ticker": "ITOT",
+            "name": "iShares Core S&P Total U.S. Stock Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Serves as the core U.S. equity engine with near-zero cost and commission-free access on E*TRADE, tracking the full U.S. market cap spectrum.",
+            "validated": true,
+            "aum": 79621505024,
+            "liveFullName": "iShares Core S&P Total U.S. Stock Market ETF"
+          },
+          {
+            "ticker": "IEFA",
+            "name": "iShares Core MSCI EAFE ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "Provides developed international diversification at very low cost with commission-free trading on E*TRADE, reducing home-country bias.",
+            "validated": true,
+            "aum": 169633218560,
+            "liveFullName": "iShares Core MSCI EAFE ETF"
+          },
+          {
+            "ticker": "IEMG",
+            "name": "iShares Core MSCI Emerging Markets ETF",
+            "allocation": 10,
+            "expenseRatio": 0.09,
+            "type": "ETF",
+            "rationale": "Adds a modest emerging market allocation to enhance long-term return potential without excessive risk concentration.",
+            "validated": true,
+            "aum": 134083567616,
+            "liveFullName": "iShares Core MSCI Emerging Markets ETF"
+          },
+          {
+            "ticker": "AGG",
+            "name": "iShares Core U.S. Aggregate Bond ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Anchors the fixed-income sleeve with broad investment-grade U.S. bond market exposure at an industry-leading low cost, commission-free on E*TRADE.",
+            "validated": true,
+            "aum": 138698178560,
+            "liveFullName": "iShares Core U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Adds international investment-grade bond diversification to reduce correlation with U.S. fixed income and broaden the defensive sleeve.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          }
+        ]
+      },
+      {
+        "id": "capital-preservation",
+        "name": "Capital Preservation",
+        "description": "This conservative portfolio prioritises protecting capital and generating modest income through a dominant allocation to high-quality U.S. and international bonds supplemented by a small equity buffer. The strategy minimises drawdown risk and volatility, making it appropriate for short time horizons or risk-averse investors near or in retirement. Low-cost, passive index ETFs ensure minimal fee drag on modest expected returns.",
+        "riskLevel": "Low",
+        "expectedAnnualReturn": "2–4%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient given the portfolio's low equity volatility and slow-drifting bond allocations, keeping costs and tax events minimal.",
+        "holdings": [
+          {
+            "ticker": "AGG",
+            "name": "iShares Core U.S. Aggregate Bond ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Forms the core of the defensive portfolio with ultra-low-cost, broad U.S. investment-grade bond exposure and commission-free access on E*TRADE.",
+            "validated": true,
+            "aum": 138698178560,
+            "liveFullName": "iShares Core U.S. Aggregate Bond ETF"
+          },
+          {
+            "ticker": "GOVT",
+            "name": "iShares U.S. Treasury Bond ETF",
+            "allocation": 25,
+            "expenseRatio": 0.05,
+            "type": "Bond Fund",
+            "rationale": "Concentrates on the safest fixed-income assets — U.S. Treasuries — providing maximum credit quality and flight-to-safety characteristics during market stress.",
+            "validated": true,
+            "aum": 40681287680,
+            "liveFullName": "iShares U.S. Treasury Bond ETF"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Diversifies fixed-income exposure across developed international investment-grade bonds, reducing reliance on U.S. rate movements alone.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          },
+          {
+            "ticker": "SHV",
+            "name": "iShares Short Treasury Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.15,
+            "type": "Bond Fund",
+            "rationale": "Provides maximum stability via very short-duration Treasuries, acting as a near-cash equivalent that preserves principal during rising rate environments.",
+            "validated": true,
+            "aum": 20944947200,
+            "liveFullName": "iShares 0–1 Year Treasury Bond ETF"
+          },
+          {
+            "ticker": "ITOT",
+            "name": "iShares Core S&P Total U.S. Stock Market ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "A minimal equity buffer offers long-term inflation protection and modest growth potential without meaningfully increasing overall portfolio volatility.",
+            "validated": true,
+            "aum": 79621505024,
+            "liveFullName": "iShares Core S&P Total U.S. Stock Market ETF"
+          }
+        ]
+      }
+    ],
+    "verified_at": "2026-04-22 21:40 UTC",
+    "warnings": []
+  },
+  {
+    "key": "any",
+    "label": "Generic",
+    "portfolios": [
+      {
+        "id": "dividend-income",
+        "name": "Dividend Income",
+        "description": "This portfolio targets reliable income generation through high-yield and dividend-growth ETFs diversified across domestic and international equities. It emphasises funds with low expense ratios and broad multi-sector exposure to reduce concentration risk. The strategy suits income-oriented investors who can tolerate moderate equity volatility in exchange for above-average yield.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "4–6%",
+        "rebalancingFrequency": "Semi-Annually",
+        "rebalancingRationale": "Semi-annual rebalancing captures meaningful drift in dividend-focused holdings without generating excessive taxable events from frequent trading.",
+        "holdings": [
+          {
+            "ticker": "VYM",
+            "name": "Vanguard High Dividend Yield ETF",
+            "allocation": 30,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Provides broad exposure to U.S. high-dividend-yield stocks with an ultra-low expense ratio and over $50 billion in AUM.",
+            "validated": true,
+            "aum": 88722817024,
+            "liveFullName": "Vanguard High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "SCHD",
+            "name": "Schwab U.S. Dividend Equity ETF",
+            "allocation": 25,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Screens for dividend quality and consistency, delivering strong risk-adjusted income with minimal cost and high liquidity.",
+            "validated": true,
+            "aum": 84820000768,
+            "liveFullName": "Schwab U.S. Dividend Equity ETF"
+          },
+          {
+            "ticker": "VIG",
+            "name": "Vanguard Dividend Appreciation ETF",
+            "allocation": 20,
+            "expenseRatio": 0.04,
+            "type": "ETF",
+            "rationale": "Focuses on companies with a track record of growing dividends, adding a quality tilt and long-term capital appreciation potential.",
+            "validated": true,
+            "aum": 117045436416,
+            "liveFullName": "Vanguard Dividend Appreciation Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VYMI",
+            "name": "Vanguard International High Dividend Yield ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "ETF",
+            "rationale": "Extends dividend income internationally, diversifying geographic risk while capturing higher yields available in developed and emerging markets.",
+            "validated": true,
+            "aum": 18793373696,
+            "liveFullName": "Vanguard International High Dividend Yield Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "A small allocation to investment-grade bonds smooths overall portfolio volatility and provides a defensive buffer during equity drawdowns.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          }
+        ]
+      },
+      {
+        "id": "aggressive-growth",
+        "name": "Aggressive Growth",
+        "description": "This portfolio pursues maximum long-term capital appreciation through a heavy equity allocation tilted toward small- and mid-cap stocks and broad international exposure. It accepts significant short-term volatility as the price of higher expected long-run returns. Suited to investors with long time horizons of ten or more years and high risk tolerance.",
+        "riskLevel": "Very High",
+        "expectedAnnualReturn": "8–11%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing limits taxable realisation events while still correcting material drift that accumulates in a volatile, equity-heavy portfolio.",
+        "holdings": [
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 30,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Captures the entire U.S. equity market including large, mid, and small caps in a single ultra-low-cost wrapper with over $400 billion in AUM.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VXF",
+            "name": "Vanguard Extended Market ETF",
+            "allocation": 20,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Tilts the portfolio toward U.S. mid- and small-cap stocks beyond the S&P 500, capturing the historical small-cap risk premium.",
+            "validated": true,
+            "aum": 81523654656,
+            "liveFullName": "Vanguard Extended Market Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VEA",
+            "name": "Vanguard FTSE Developed Markets ETF",
+            "allocation": 20,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Adds broad developed international equity exposure across Europe, Asia, and Australia, reducing home-country concentration risk.",
+            "validated": true,
+            "aum": 282201522176,
+            "liveFullName": "Vanguard FTSE Developed Markets Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VWO",
+            "name": "Vanguard FTSE Emerging Markets ETF",
+            "allocation": 20,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Allocates to high-growth emerging economies, offering return potential above developed markets over long investment horizons.",
+            "validated": true,
+            "aum": 146314903552,
+            "liveFullName": "Vanguard Emerging Markets Stock Index Fund"
+          },
+          {
+            "ticker": "VSS",
+            "name": "Vanguard FTSE All-World ex-US Small-Cap ETF",
+            "allocation": 10,
+            "expenseRatio": 0.06,
+            "type": "ETF",
+            "rationale": "Provides international small-cap exposure to capture the global small-cap risk premium outside the United States.",
+            "validated": true,
+            "aum": 12765584384,
+            "liveFullName": "Vanguard FTSE All-World ex-US Small-Cap Index Fund ETF Shares"
+          }
+        ]
+      },
+      {
+        "id": "moderate-growth",
+        "name": "Moderate Growth",
+        "description": "This balanced portfolio blends broad equity index funds with investment-grade bonds to deliver steady long-term growth while limiting drawdown severity. The classic equity-bond split targets investors with medium risk tolerance and a time horizon of five to ten years. Low-cost, passive index funds are used throughout to maximise after-fee, after-tax returns.",
+        "riskLevel": "Moderate",
+        "expectedAnnualReturn": "5–7%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Annual rebalancing is sufficient to maintain the intended equity-bond risk profile without incurring unnecessary transaction costs or capital gains.",
+        "holdings": [
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "Serves as the core domestic equity holding, providing diversified U.S. market exposure at minimal cost.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VXUS",
+            "name": "Vanguard Total International Stock ETF",
+            "allocation": 20,
+            "expenseRatio": 0.05,
+            "type": "ETF",
+            "rationale": "Complements U.S. equities with comprehensive international developed and emerging market coverage in a single fund.",
+            "validated": true,
+            "aum": 582269730816,
+            "liveFullName": "Vanguard Total International Stock Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Anchors the fixed-income sleeve with broad U.S. investment-grade bond exposure, reducing overall portfolio volatility.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 10,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Extends bond diversification internationally, adding currency-hedged exposure to non-U.S. investment-grade debt.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          },
+          {
+            "ticker": "VTIP",
+            "name": "Vanguard Short-Term Inflation-Protected Securities ETF",
+            "allocation": 5,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Provides a modest inflation hedge through short-duration TIPS, protecting real purchasing power of the bond allocation.",
+            "validated": true,
+            "aum": 65838837760,
+            "liveFullName": "Vanguard Short-Term Inflation-Protected Securities Index Fund ETF Shares"
+          }
+        ]
+      },
+      {
+        "id": "capital-preservation",
+        "name": "Capital Preservation",
+        "description": "This conservative portfolio prioritises the protection of nominal capital and stable income through an overwhelmingly bond-heavy allocation supplemented by a small equity position for inflation protection. It is designed for risk-averse investors, retirees, or those with short time horizons who cannot afford significant drawdowns. All funds are passive, broadly diversified, and extremely low cost.",
+        "riskLevel": "Low",
+        "expectedAnnualReturn": "2–4%",
+        "rebalancingFrequency": "Annually",
+        "rebalancingRationale": "Bond-heavy portfolios drift slowly relative to equities, making annual rebalancing adequate to maintain the target risk profile while minimising transaction friction.",
+        "holdings": [
+          {
+            "ticker": "BND",
+            "name": "Vanguard Total Bond Market ETF",
+            "allocation": 40,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Forms the core of the portfolio with broad U.S. investment-grade bond exposure spanning government, corporate, and mortgage-backed securities.",
+            "validated": true,
+            "aum": 387461611520,
+            "liveFullName": "Vanguard Total Bond Market Index Fund"
+          },
+          {
+            "ticker": "VGSH",
+            "name": "Vanguard Short-Term Treasury ETF",
+            "allocation": 25,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Anchors stability with short-duration U.S. Treasuries, minimising interest rate sensitivity and providing high credit quality.",
+            "validated": true,
+            "aum": 33368180736,
+            "liveFullName": "Vanguard Short-Term Treasury Index Fund ETF Shares"
+          },
+          {
+            "ticker": "BNDX",
+            "name": "Vanguard Total International Bond ETF",
+            "allocation": 15,
+            "expenseRatio": 0.07,
+            "type": "Bond Fund",
+            "rationale": "Adds international investment-grade bond diversification with currency hedging to reduce foreign exchange volatility.",
+            "validated": true,
+            "aum": 116905074688,
+            "liveFullName": "Vanguard Total International Bond Index Fund"
+          },
+          {
+            "ticker": "VTIP",
+            "name": "Vanguard Short-Term Inflation-Protected Securities ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "Bond Fund",
+            "rationale": "Guards against inflation erosion with short-duration TIPS, preserving real purchasing power at minimal interest rate risk.",
+            "validated": true,
+            "aum": 65838837760,
+            "liveFullName": "Vanguard Short-Term Inflation-Protected Securities Index Fund ETF Shares"
+          },
+          {
+            "ticker": "VTI",
+            "name": "Vanguard Total Stock Market ETF",
+            "allocation": 10,
+            "expenseRatio": 0.03,
+            "type": "ETF",
+            "rationale": "A minimal equity sleeve provides long-run inflation-beating returns and prevents complete erosion of real wealth over time.",
+            "validated": true,
+            "aum": 1991753859072,
+            "liveFullName": "Vanguard Total Stock Market Index Fund ETF Shares"
+          }
+        ]
+      }
+    ],
+    "verified_at": "2026-04-22 21:41 UTC",
+    "warnings": []
+  }
+];
+
+const THEMES = {
+  'dividend-income':     { gradient: 'linear-gradient(135deg,#14532d 0%,#16a34a 60%,#22c55e 100%)', segments: ['#15803d','#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0'] },
+  'aggressive-growth':   { gradient: 'linear-gradient(135deg,#7f1d1d 0%,#c2410c 55%,#ea580c 100%)', segments: ['#c2410c','#ea580c','#f97316','#fb923c','#fdba74','#fde68a'] },
+  'moderate-growth':     { gradient: 'linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#3b82f6 100%)', segments: ['#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd','#bfdbfe'] },
+  'capital-preservation':{ gradient: 'linear-gradient(135deg,#0f172a 0%,#334155 55%,#64748b 100%)', segments: ['#1e293b','#334155','#475569','#64748b','#94a3b8','#cbd5e1'] },
+};
+const FALLBACK = { gradient: 'linear-gradient(135deg,#4f46e5,#7c3aed)', segments: ['#4f46e5','#7c3aed','#ec4899','#14b8a6','#f59e0b','#ef4444'] };
+
+function theme(id) { return THEMES[id] || FALLBACK; }
+
+function wer(holdings) {
+  const total = holdings.reduce((s, h) => s + h.allocation, 0) || 100;
+  return holdings.reduce((s, h) => s + (h.expenseRatio * h.allocation / total), 0);
+}
+
+function fmtER(val) {
+  if (val < 0.005) val *= 100;
+  return val.toFixed(3) + '%';
+}
+
+function fmtAUM(n) {
+  if (n == null) return 'N/A';
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(1) + 'T';
+  if (n >= 1e9)  return '$' + (n / 1e9).toFixed(1) + 'B';
+  return '$' + (n / 1e6).toFixed(0) + 'M';
+}
+
+function renderCard(p) {
+  const t      = theme(p.id);
+  const sorted = [...p.holdings].sort((a, b) => b.allocation - a.allocation);
+  const wa     = wer(p.holdings);
+
+  const barSegs = sorted.map((h, i) => {
+    const color = t.segments[i % t.segments.length];
+    return `<div class="bar-seg" style="width:${h.allocation.toFixed(2)}%;background:${color};" title="${h.ticker}: ${h.allocation.toFixed(1)}%"></div>`;
+  }).join('');
+
+  const legend = sorted.map((h, i) => {
+    const color = t.segments[i % t.segments.length];
+    return `<div class="legend-item"><div class="legend-swatch" style="background:${color};"></div><span>${h.ticker} ${h.allocation.toFixed(0)}%</span></div>`;
+  }).join('');
+
+  const rows = p.holdings.map(h => {
+    const liveBadge = h.validated ? '<span class="er-live-badge">live</span>' : '';
+    const rationale = (h.rationale || '').replace(/"/g, '&quot;');
+    return `<tr>
+      <td class="ticker-cell" title="${rationale}">${h.ticker}</td>
+      <td class="fund-name">${h.liveFullName || h.name}</td>
+      <td class="alloc-num">${h.allocation.toFixed(1)}%</td>
+      <td class="er-num">${fmtER(h.expenseRatio)}${liveBadge}</td>
+      <td class="aum-num">${fmtAUM(h.aum)}</td>
+      <td><span class="type-chip">${h.type}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card">
+    <div class="card-header" style="background:${t.gradient};">
+      <div class="header-top">
+        <div class="card-name">${p.name}</div>
+        <span class="risk-badge">${p.riskLevel}&nbsp;Risk</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="description">${p.description}</p>
+      <div class="meta-row">
+        <div class="meta-item"><span class="meta-label">Expected Return</span><span class="meta-value">${p.expectedAnnualReturn}</span></div>
+        <div class="meta-item"><span class="meta-label">Wtd. Avg. ER</span><span class="meta-value">${fmtER(wa)}</span></div>
+        <div class="meta-item"><span class="meta-label">Rebalance</span><span class="meta-value">${p.rebalancingFrequency || '—'}</span></div>
+        <div class="meta-item"><span class="meta-label">Holdings</span><span class="meta-value">${p.holdings.length}</span></div>
+      </div>
+      ${p.rebalancingRationale ? `<p class="rebal-rationale">&#x1F501; ${p.rebalancingRationale}</p>` : ''}
+      <div>
+        <div class="section-label">Allocation Breakdown</div>
+        <div class="alloc-bar">${barSegs}</div>
+        <div class="bar-legend">${legend}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticker</th><th>Fund Name</th><th>Alloc %</th><th>Exp. Ratio</th><th>AUM</th><th>Type</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="wer-row">
+          <span>Weighted avg. expense ratio:&nbsp;<strong>${fmtER(wa)}</strong></span>
+          <span class="source-note">ER &amp; AUM from Yahoo Finance &middot; verified ${ALL_DATA[currentKey].verified_at}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderWarnings(warnings) {
+  if (!warnings || !warnings.length) return '';
+  const items = warnings.map(w => `<li>${w}</li>`).join('');
+  return `<div class="warnings-banner"><strong>&#9888; Validation warnings (${warnings.length})</strong><ul>${items}</ul></div>`;
+}
+
+let currentKey = ALL_DATA[0] ? ALL_DATA[0].key : null;
+// ALL_DATA is an array; build a lookup map
+const dataMap = {};
+ALL_DATA.forEach(d => { dataMap[d.key] = d; });
+if (!currentKey) currentKey = ALL_DATA[0]?.key;
+
+function switchTab(key) {
+  currentKey = key;
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.key === key);
+  });
+  const d = dataMap[key];
+  document.getElementById('tab-warnings').innerHTML = renderWarnings(d.warnings);
+  document.getElementById('grid').innerHTML = d.portfolios.map(renderCard).join('');
+}
+
+// Build tab bar
+const tabBar = document.getElementById('tab-bar');
+ALL_DATA.forEach(d => {
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn' + (d.key === currentKey ? ' active' : '');
+  btn.dataset.key = d.key;
+  btn.textContent = d.label;
+  btn.addEventListener('click', () => switchTab(d.key));
+  tabBar.appendChild(btn);
+});
+
+// Render initial tab
+switchTab(currentKey);
+</script>
+</body>
+</html>

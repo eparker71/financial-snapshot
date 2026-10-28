@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Pulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #21262d;
+      --border:  rgba(240,246,252,0.10);
+      --border2: rgba(240,246,252,0.18);
+      --t1:      #e6edf3;
+      --t2:      #8b949e;
+      --t3:      #484f58;
+      --accent:  #388bfd;
+      --up:      #3fb950;
+      --dn:      #f85149;
+      --neu:     #8b949e;
+      --r:       8px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--t1);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Top bar ────────────────────────────────────── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tb-left  { display: flex; align-items: center; gap: 12px; }
+    .tb-logo  { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
+    .tb-badge {
+      font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+      background: var(--bg3); color: var(--t2); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .tb-right { display: flex; align-items: center; gap: 16px; }
+    .tb-meta  { font-size: 12px; color: var(--t2); font-family: 'JetBrains Mono', monospace; }
+    .tb-meta span { color: var(--t1); }
+    .tb-nav {
+      font-size: 13px; font-weight: 500; color: var(--t2);
+      padding: 6px 14px; border: 1px solid var(--border);
+      border-radius: 6px; transition: border-color .15s, color .15s;
+    }
+    .tb-nav:hover { border-color: var(--border2); color: var(--t1); }
+    /* ── Page wrapper ───────────────────────────────── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    /* ── Hero strip ─────────────────────────────────── */
+    .hero-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .hero-tile {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px;
+      transition: border-color .15s;
+    }
+    .hero-tile:hover { border-color: var(--border2); }
+    .h-label { font-size: 11px; color: var(--t2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .h-val   { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: var(--t1); line-height: 1.1; margin-bottom: 4px; }
+    .h-chg   { font-family: 'JetBrains Mono', monospace; font-size: 12px; min-height: 16px; }
+
+    /* ── Section heading ────────────────────────────── */
+    .sec-hd {
+      font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-sec { margin-bottom: 48px; }
+
+    /* ── Data cards ─────────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 12px;
+    }
+    .data-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }
+    .card-hd {
+      font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--t2); padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-icon { font-size: 13px; }
+    .dr {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 7px 14px; border-bottom: 1px solid var(--border);
+    }
+    .dr:last-child { border-bottom: none; }
+    .dr-lbl { color: var(--t2); font-size: 13px; }
+    .dr-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--t1); text-align: right; }
+    .dr-chg { font-size: 11px; margin-left: 5px; }
+    .dr-sub { font-size: 10px; color: var(--t3); display: block; margin-top: 1px; }
+
+    /* ── Colors ─────────────────────────────────────── */
+    .up  { color: var(--up); }
+    .dn  { color: var(--dn); }
+    .neu { color: var(--neu); }
+
+    /* ── News ───────────────────────────────────────── */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
+    }
+    .news-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px; display: block;
+      transition: border-color .15s, background .15s;
+    }
+    .news-card:hover { border-color: var(--border2); background: var(--bg3); }
+    .nc-source { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+    .nc-title  { font-size: 14px; color: var(--t1); line-height: 1.4; }
+
+    /* ── AI Analysis ───────────────────────────────── */
+    .anomaly-card {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.4);
+      border-left: 4px solid #f59e0b;
+      border-radius: var(--r); padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .anomaly-hd {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: #b45309; margin-bottom: 8px;
+    }
+    .anomaly-body {
+      font-size: 14px; color: var(--t1); line-height: 1.6;
+    }
+    .ai-card {
+      background: linear-gradient(135deg, rgba(56,139,253,0.08) 0%, rgba(56,139,253,0.03) 100%);
+      border: 1px solid rgba(56,139,253,0.25);
+      border-radius: var(--r); padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .ai-hd {
+      font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ai-hd::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(56,139,253,0.2);
+    }
+    .ai-body {
+      font-size: 14px; color: var(--t1); line-height: 1.65;
+    }
+    .ai-watch {
+      margin-top: 12px; padding: 8px 12px;
+      background: rgba(56,139,253,0.07); border-left: 3px solid var(--accent);
+      font-size: 13px; color: var(--t1); line-height: 1.55; border-radius: 0 4px 4px 0;
+    }
+
+    /* ── Firm Insights ──────────────────────────────── */
+    .fi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .fi-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }
+    .fi-hd {
+      font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--accent); padding: 10px 14px; border-bottom: 1px solid var(--border);
+    }
+    .fi-row {
+      display: block; padding: 9px 14px; font-size: 13px; color: var(--t2);
+      border-bottom: 1px solid var(--border); line-height: 1.4;
+      transition: color .12s, background .12s;
+    }
+    .fi-row:last-child { border-bottom: none; }
+    .fi-row:hover { color: var(--t1); background: var(--bg3); }
+
+    /* ── Archive ────────────────────────────────────── */
+    .arc-grid   { display: flex; flex-direction: column; gap: 20px; }
+    .arc-mhd    {
+      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .arc-cnt    {
+      font-size: 10px; background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 10px; color: var(--t3); font-weight: 400;
+    }
+    .arc-rows   { display: flex; flex-wrap: wrap; gap: 6px; }
+    .arc-row    {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t2);
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+      padding: 4px 10px; transition: color .12s, border-color .12s;
+    }
+    .arc-row:hover { color: var(--t1); border-color: var(--border2); }
+
+    /* ── Footer ─────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid var(--border); padding-top: 24px; margin-top: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .footer-l, .footer-r { font-size: 11px; color: var(--t3); }
+
+    /* ── Misc ───────────────────────────────────────── */
+    .empty-msg { color: var(--t3); font-size: 13px; padding: 8px 0; }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @media (max-width: 640px) {
+      .topbar { padding: 0 16px; }
+      .page { padding: 20px 16px 60px; }
+      .hero-strip { grid-template-columns: repeat(2, 1fr); }
+      .tb-meta { display: none; }
+      .tb-nav  { display: none; }
+      .sub-card { flex-direction: column; gap: 24px; padding: 24px; }
+      .form-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="tb-left">
+    <span class="tb-logo">📊 Market Pulse</span>
+    <span class="tb-badge">Last snapshot: Aug 11, 2026</span>
+  </div>
+  <div class="tb-right">
+    <a href="portfolios.html" class="tb-nav">Portfolios</a>
+  </div>
+</header>
+
+<div class="page">
+
+  
+  <div class="ai-card"><div class="ai-hd">AI Morning Briefing</div><div class="ai-body">Equities posted modest declines across the board, with the S&amp;P 500, Dow, and Nasdaq all down roughly 0.3%, while the VIX remained subdued at 15.28 and the Fear &amp; Greed Index signaled underlying caution at 27. Crude oil surged 2% to $83.79, likely reflecting supply concerns or geopolitical tension, while Treasury yields held steady at 4.68% against persistent inflation readings of 3.73%. Bitcoin and risk assets moved in tandem with equities, suggesting measured risk-off sentiment despite low volatility metrics.</div><div class="ai-watch"><strong>Watch today:</strong> Monitor crude oil&#x27;s continued strength above $83 and watch for any Fed commentary on sticky inflation; a sustained rally in energy could pressure Treasury yields and force a reassessment of rate-cut timing expectations.</div></div>
+
+  <div class="hero-strip">
+    <div class="hero-tile"><div class="h-label">S&amp;P 500</div><div class="h-val">$7,728.20</div><div class="h-chg dn">-0.32%</div></div>
+<div class="hero-tile"><div class="h-label">Dow Jones</div><div class="h-val">$53,791.85</div><div class="h-chg dn">-0.34%</div></div>
+<div class="hero-tile"><div class="h-label">Bitcoin</div><div class="h-val">$63,669</div><div class="h-chg dn">-0.30%</div></div>
+<div class="hero-tile"><div class="h-label">Gold</div><div class="h-val">$4,437.20</div><div class="h-chg dn">-0.89%</div></div>
+<div class="hero-tile"><div class="h-label">VIX</div><div class="h-val">15.28</div><div class="h-chg up">-1.16%</div></div>
+<div class="hero-tile"><div class="h-label">Fear &amp; Greed</div><div class="h-val">27</div><div class="h-chg dn">Fear</div></div>
+  </div>
+
+  <section class="page-sec" id="data">
+    <h2 class="sec-hd">Market Data</h2>
+    <div class="cards-grid">
+      <div class="data-card"><div class="card-hd"><span class="card-icon">📈</span>US Markets</div><div class="dr"><span class="dr-lbl">S&amp;P 500</span><span class="dr-val"><span>$7,728.20</span><span class="dr-chg dn">-0.32%</span></span></div><div class="dr"><span class="dr-lbl">Dow Jones</span><span class="dr-val"><span>$53,791.85</span><span class="dr-chg dn">-0.34%</span></span></div><div class="dr"><span class="dr-lbl">Nasdaq 100</span><span class="dr-val"><span>$29,525.48</span><span class="dr-chg dn">-0.33%</span></span></div><div class="dr"><span class="dr-lbl">Russell 2000</span><span class="dr-val"><span>$3,027.12</span><span class="dr-chg up">+0.32%</span></span></div><div class="dr"><span class="dr-lbl">VIX</span><span class="dr-val"><span>15.28</span><span class="dr-chg up">-1.16%</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">💎</span>Magnificent 7</div><div class="dr"><span class="dr-lbl">Apple (AAPL)</span><span class="dr-val"><span>$304.91</span><span class="dr-chg dn">-0.86%</span></span></div><div class="dr"><span class="dr-lbl">Microsoft (MSFT)</span><span class="dr-val"><span>$503.81</span><span class="dr-chg dn">-0.29%</span></span></div><div class="dr"><span class="dr-lbl">Amazon (AMZN)</span><span class="dr-val"><span>$272.27</span><span class="dr-chg dn">-1.79%</span></span></div><div class="dr"><span class="dr-lbl">Alphabet (GOOGL)</span><span class="dr-val"><span>$343.80</span><span class="dr-chg dn">-3.58%</span></span></div><div class="dr"><span class="dr-lbl">Meta (META)</span><span class="dr-val"><span>$599.12</span><span class="dr-chg up">+0.83%</span></span></div><div class="dr"><span class="dr-lbl">Tesla (TSLA)</span><span class="dr-val"><span>$332.81</span><span class="dr-chg up">+0.76%</span></span></div><div class="dr"><span class="dr-lbl">Nvidia (NVDA)</span><span class="dr-val"><span>$217.50</span><span class="dr-chg dn">-0.22%</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">📊</span>Sector Performance</div><div class="dr"><span class="dr-lbl">Homebuilders (XHB)</span><span class="dr-val"><span>$110.30</span><span class="dr-chg up">+1.90%</span></span></div><div class="dr"><span class="dr-lbl">Energy (XLE)</span><span class="dr-val"><span>$60.93</span><span class="dr-chg up">+1.20%</span></span></div><div class="dr"><span class="dr-lbl">Regional Banks (KRE)</span><span class="dr-val"><span>$76.81</span><span class="dr-chg up">+1.07%</span></span></div><div class="dr"><span class="dr-lbl">Utilities (XLU)</span><span class="dr-val"><span>$43.63</span><span class="dr-chg up">+1.04%</span></span></div><div class="dr"><span class="dr-lbl">Industrials (XLI)</span><span class="dr-val"><span>$185.70</span><span class="dr-chg up">+0.58%</span></span></div><div class="dr"><span class="dr-lbl">Semiconductors (SMH)</span><span class="dr-val"><span>$572.93</span><span class="dr-chg up">+0.41%</span></span></div><div class="dr"><span class="dr-lbl">Materials (XLB)</span><span class="dr-val"><span>$53.24</span><span class="dr-chg up">+0.08%</span></span></div><div class="dr"><span class="dr-lbl">Biotech (XBI)</span><span class="dr-val"><span>$158.07</span><span class="dr-chg up">+0.04%</span></span></div><div class="dr"><span class="dr-lbl">Consumer Staples (XLP)</span><span class="dr-val"><span>$84.69</span><span class="dr-chg dn">-0.02%</span></span></div><div class="dr"><span class="dr-lbl">Communication Svcs (XLC)</span><span class="dr-val"><span>$111.27</span><span class="dr-chg dn">-0.42%</span></span></div><div class="dr"><span class="dr-lbl">Real Estate (XLRE)</span><span class="dr-val"><span>$44.08</span><span class="dr-chg dn">-0.67%</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">🪙</span>Crypto</div><div class="dr"><span class="dr-lbl">Bitcoin (BTC)</span><span class="dr-val"><span>$63,669</span><span class="dr-chg dn">-0.30%</span></span></div><div class="dr"><span class="dr-lbl">Ethereum (ETH)</span><span class="dr-val"><span>$1,881.50</span><span class="dr-chg up">+0.60%</span></span></div><div class="dr"><span class="dr-lbl">Solana (SOL)</span><span class="dr-val"><span>$76.29</span><span class="dr-chg up">+0.50%</span></span></div><div class="dr"><span class="dr-lbl">Ripple (XRP)</span><span class="dr-val"><span>$1.0220</span><span class="dr-chg up">+1.10%</span></span></div><div class="dr"><span class="dr-lbl">Cardano (ADA)</span><span class="dr-val"><span>$0.1858</span><span class="dr-chg dn">-2.00%</span></span></div><div class="dr"><span class="dr-lbl">Fear &amp; Greed</span><span class="dr-val"><span>27 – Fear</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">⛽</span>Energy &amp; Metals</div><div class="dr"><span class="dr-lbl">Crude Oil (WTI)</span><span class="dr-val"><span>$83.79</span><span class="dr-chg up">+2.03%</span></span></div><div class="dr"><span class="dr-lbl">US Gas (avg)</span><span class="dr-val"><span>$4.006/gal</span></span></div><div class="dr"><span class="dr-lbl">US Diesel (avg)</span><span class="dr-val"><span>$5.257/gal</span></span></div><div class="dr"><span class="dr-lbl">Gold</span><span class="dr-val"><span>$4,437.20</span><span class="dr-chg dn">-0.89%</span></span></div><div class="dr"><span class="dr-lbl">Silver</span><span class="dr-val"><span>$64.96</span><span class="dr-chg dn">-1.51%</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">💱</span>FX &amp; Rates</div><div class="dr"><span class="dr-lbl">EUR/USD</span><span class="dr-val"><span>1.1542</span><span class="dr-chg dn">-0.05%</span></span></div><div class="dr"><span class="dr-lbl">USD/JPY</span><span class="dr-val"><span>¥159.33</span><span class="dr-chg up">+0.04%</span></span></div><div class="dr"><span class="dr-lbl">10-Yr Treasury</span><span class="dr-val"><span>4.684%</span><span class="dr-chg up">-0.32%</span></span></div><div class="dr"><span class="dr-lbl">13-Wk T-Bill</span><span class="dr-val"><span>3.730%</span><span class="dr-chg dn">+0.32%</span></span></div><div class="dr"><span class="dr-lbl">30-Yr Mortgage</span><span class="dr-val"><span>6.69%</span></span></div></div><div class="data-card"><div class="card-hd"><span class="card-icon">📉</span>Economy</div><div class="dr"><span class="dr-lbl">CPI (All Items)</span><span class="dr-val"><span>3.7% YoY</span><div class="dr-sub">2026-06-01</div></span></div><div class="dr"><span class="dr-lbl">Unemployment</span><span class="dr-val"><span>4.1%</span></span></div><div class="dr"><span class="dr-lbl">GDP Growth</span><span class="dr-val"><span>1.5% QoQ ann.</span><div class="dr-sub">2026-04-01</div></span></div><div class="dr"><span class="dr-lbl">National Debt</span><span class="dr-val"><span>$39.89T</span><div class="dr-sub">2026-08-10</div></span></div><div class="dr"><span class="dr-lbl">Eggs (Grade A)</span><span class="dr-val"><span>$2.14/doz</span></span></div><div class="dr"><span class="dr-lbl">Milk (whole)</span><span class="dr-val"><span>$4.32/gal</span></span></div></div>
+    </div>
+  </section>
+
+  <section class="page-sec" id="news"><h2 class="sec-hd">Market News</h2><div class="news-grid"><a class="news-card" href="https://www.cnbc.com/2026/10/27/q3-earnings-resilient-consumer.html" target="_blank" rel="noopener noreferrer"><div class="nc-source">CNBC Markets</div><div class="nc-title">Early third-quarter earnings show a &#x27;resilient&#x27; U.S. consumer, with signs of strain</div></a><a class="news-card" href="https://www.cnbc.com/2026/10/27/speaker-johnson-peaceful-transfer-midterms.html" target="_blank" rel="noopener noreferrer"><div class="nc-source">CNBC Markets</div><div class="nc-title">Speaker Mike Johnson calls election-transfer concerns ‘absurd’</div></a><a class="news-card" href="https://www.cnbc.com/2026/10/28/sk-hynix-third-quarter-profit.html" target="_blank" rel="noopener noreferrer"><div class="nc-source">CNBC Markets</div><div class="nc-title">SK Hynix announces over $25 billion in dividends and buyback as third-quarter profit beats estimates</div></a><a class="news-card" href="https://www.cnbc.com/2026/10/27/amazon-ai-coding-tokenmaxxing.html" target="_blank" rel="noopener noreferrer"><div class="nc-source">CNBC Markets</div><div class="nc-title">Amazon&#x27;s anti-tokenmaxxing memo says engineers should be pickier about using AI</div></a></div></section>
+
+  <section class="page-sec" id="insights"><h2 class="sec-hd">Firm Insights</h2><div class="fi-grid"><div class="fi-card"><div class="fi-hd">Fidelity Viewpoints</div><a class="fi-row" href="https://www.fidelity.com/learning-center/trading-investing/find-high-bond-yields-now" target="_blank" rel="noopener noreferrer">Where to find 5%, 6%, 7%, 8% bond yields now</a><a class="fi-row" href="https://www.fidelity.com/learning-center/personal-finance/72t-rule" target="_blank" rel="noopener noreferrer">What is the Rule of 72(t)?</a><a class="fi-row" href="https://www.fidelity.com/learning-center/personal-finance/types-of-life-insurance" target="_blank" rel="noopener noreferrer">What are the different types of life insurance?</a><a class="fi-row" href="https://www.fidelity.com/learning-center/personal-finance/when-can-I-retire" target="_blank" rel="noopener noreferrer">When can I retire?</a></div><div class="fi-card"><div class="fi-hd">BlackRock</div><a class="fi-row" href="https://www.blackrock.com/us/individual/insights/blackrock-investment-institute/outlook" target="_blank" rel="noopener noreferrer">Latest Global Investment Outlook</a><a class="fi-row" href="https://www.blackrock.com/us/individual/insights/blackrock-investment-institute/weekly-commentary" target="_blank" rel="noopener noreferrer">The Mideast energy shock’s next phase</a><a class="fi-row" href="https://www.blackrock.com/us/individual/insights/active-investor-series" target="_blank" rel="noopener noreferrer">3+1 Active Investor Series</a><a class="fi-row" href="https://www.blackrock.com/us/individual/insights/blackrock-investment-institute/weekly-commentary" target="_blank" rel="noopener noreferrer">Weekly market commentary</a></div><div class="fi-card"><div class="fi-hd">J.P. Morgan AM</div><a class="fi-row" href="https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/market-updates/weekly-market-recap/" target="_blank" rel="noopener noreferrer">Weekly Market Recap</a><a class="fi-row" href="https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/market-updates/on-the-minds-of-investors/" target="_blank" rel="noopener noreferrer">On the Minds of Investors</a><a class="fi-row" href="https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/market-updates/notes-on-the-week-ahead/" target="_blank" rel="noopener noreferrer">Notes on the Week Ahead</a><a class="fi-row" href="https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/market-updates/economic-update/" target="_blank" rel="noopener noreferrer">Economic Update</a></div><div class="fi-card"><div class="fi-hd">MarketWatch</div><a class="fi-row" href="https://www.marketwatch.com/story/retail-traders-buy-the-dip-on-chip-stocks-but-robinhood-gets-burned-by-the-crypto-market-33cea913?mod=mw_rss_topstories" target="_blank" rel="noopener noreferrer">Retail traders buy the dip on chip stocks — but Robinhood gets burned by the crypto market</a><a class="fi-row" href="https://www.marketwatch.com/story/shes-living-the-dream-my-stepmother-said-i-can-buy-my-childhood-home-for-850-000-is-she-taking-advantage-of-me-1fdda7b5?mod=mw_rss_topstories" target="_blank" rel="noopener noreferrer">‘She’s living the dream’: My stepmother said I can buy my childhood home for $850,000. Is she taking advantage of me?</a><a class="fi-row" href="https://www.marketwatch.com/story/coreweave-and-other-ai-stocks-rise-as-anthropic-restores-the-markets-faith-in-sustained-spending-c71d7186?mod=mw_rss_topstories" target="_blank" rel="noopener noreferrer">CoreWeave and other AI stocks rise as Anthropic restores the market’s faith in sustained spending</a><a class="fi-row" href="https://www.marketwatch.com/story/as-trump-touts-energy-companies-fortunes-u-s-consumers-face-the-most-expensive-year-for-gas-prices-ever-c467268c?mod=mw_rss_topstories" target="_blank" rel="noopener noreferrer">As Trump touts energy companies’ fortunes, U.S. consumers face the most expensive year for gas prices ever</a></div><div class="fi-card"><div class="fi-hd">On Watch by MarketWatch</div><a class="fi-row" href="https://on-watch-by-marketwatch.simplecast.com/episodes/the-trump-moves-that-will-matter-to-the-economy-_jSzJQGA" target="_blank" rel="noopener noreferrer">The Trump moves that will matter to the economy</a><a class="fi-row" href="https://on-watch-by-marketwatch.simplecast.com/episodes/salesforce-ceo-marc-benioff-on-the-path-for-ai-and-the-new-trump-era-RKELnCBi" target="_blank" rel="noopener noreferrer">Salesforce CEO Marc Benioff on the path for AI and the new Trump era</a><a class="fi-row" href="https://on-watch-by-marketwatch.simplecast.com/episodes/a-pivot-point-in-ai-investing-g4Fnx27s" target="_blank" rel="noopener noreferrer">A pivot point in AI investing?</a><a class="fi-row" href="https://on-watch-by-marketwatch.simplecast.com/episodes/the-moneyists-guide-to-a-financially-fruitful-2025-udvBOydh" target="_blank" rel="noopener noreferrer">The Moneyist&#x27;s guide to a financially fruitful 2025</a></div></div></section>
+
+  <section class="page-sec" id="archive"><h2 class="sec-hd">Snapshot Archive</h2><div class="arc-grid"><div class="arc-month"><div class="arc-mhd">August 2026 <span class="arc-cnt">2</span></div><div class="arc-rows"><a class="arc-row" href="output_20260811_210652.html">Tue Aug 11 · 21:06</a><a class="arc-row" href="output_20260811_203410.html">Tue Aug 11 · 20:34</a></div></div><div class="arc-month"><div class="arc-mhd">May 2026 <span class="arc-cnt">3</span></div><div class="arc-rows"><a class="arc-row" href="output_20260511_093843.html">Mon May 11 · 09:38</a><a class="arc-row" href="output_20260511_093145.html">Mon May 11 · 09:31</a><a class="arc-row" href="output_20260511_092946.html">Mon May 11 · 09:29</a></div></div><div class="arc-month"><div class="arc-mhd">April 2026 <span class="arc-cnt">34</span></div><div class="arc-rows"><a class="arc-row" href="output_20260415_163903.html">Wed Apr 15 · 16:39</a><a class="arc-row" href="output_20260415_161048.html">Wed Apr 15 · 16:10</a><a class="arc-row" href="output_20260415_133440.html">Wed Apr 15 · 13:34</a><a class="arc-row" href="output_20260415_133223.html">Wed Apr 15 · 13:32</a><a class="arc-row" href="output_20260415_132923.html">Wed Apr 15 · 13:29</a><a class="arc-row" href="output_20260415_132748.html">Wed Apr 15 · 13:27</a><a class="arc-row" href="output_20260415_132440.html">Wed Apr 15 · 13:24</a><a class="arc-row" href="output_20260415_131914.html">Wed Apr 15 · 13:19</a><a class="arc-row" href="output_20260415_131702.html">Wed Apr 15 · 13:17</a><a class="arc-row" href="output_20260415_125615.html">Wed Apr 15 · 12:56</a><a class="arc-row" href="output_20260415_115102.html">Wed Apr 15 · 11:51</a><a class="arc-row" href="output_20260415_114659.html">Wed Apr 15 · 11:46</a><a class="arc-row" href="output_20260415_111720.html">Wed Apr 15 · 11:17</a><a class="arc-row" href="output_20260415_111532.html">Wed Apr 15 · 11:15</a><a class="arc-row" href="output_20260415_111452.html">Wed Apr 15 · 11:14</a><a class="arc-row" href="output_20260415_102412.html">Wed Apr 15 · 10:24</a><a class="arc-row" href="output_20260415_101546.html">Wed Apr 15 · 10:15</a><a class="arc-row" href="output_20260414_075031.html">Tue Apr 14 · 07:50</a><a class="arc-row" href="output_20260413_081237.html">Mon Apr 13 · 08:12</a><a class="arc-row" href="output_20260413_081050.html">Mon Apr 13 · 08:10</a><a class="arc-row" href="output_20260410_220154.html">Fri Apr 10 · 22:01</a><a class="arc-row" href="output_20260410_220021.html">Fri Apr 10 · 22:00</a><a class="arc-row" href="output_20260410_091822.html">Fri Apr 10 · 09:18</a><a class="arc-row" href="output_20260410_081744.html">Fri Apr 10 · 08:17</a><a class="arc-row" href="output_20260409_114510.html">Thu Apr 9 · 11:45</a><a class="arc-row" href="output_20260409_103130.html">Thu Apr 9 · 10:31</a><a class="arc-row" href="output_20260409_082130.html">Thu Apr 9 · 08:21</a><a class="arc-row" href="output_20260408_162904.html">Wed Apr 8 · 16:29</a><a class="arc-row" href="output_20260408_151619.html">Wed Apr 8 · 15:16</a><a class="arc-row" href="output_20260408_074322.html">Wed Apr 8 · 07:43</a><a class="arc-row" href="output_20260408_074321.html">Wed Apr 8 · 07:43</a><a class="arc-row" href="output_20260408_074320.html">Wed Apr 8 · 07:43</a><a class="arc-row" href="output_20260407_143610.html">Tue Apr 7 · 14:36</a><a class="arc-row" href="output_20260407_142555.html">Tue Apr 7 · 14:25</a></div></div></div></section>
+
+  <footer class="footer">
+    <div class="footer-l">Data: CoinGecko &middot; Yahoo Finance &middot; EIA &middot; FRED/BLS &middot; US Treasury &middot; Not financial advice</div>
+    <div class="footer-r">39 snapshots archived</div>
+  </footer>
+
+</div>
+
+</body>
+</html>
