@@ -11,8 +11,11 @@ source venv/bin/activate
 # Run the daily snapshot (fetches data, sends email, regenerates dashboard)
 python financial_snapshot.py
 
-# Start the webhook server locally (live API, web signup, inbound email webhooks)
-python webhook_server.py
+# Daily entry point for cron: send snapshot, then publish html/ to GitHub Pages
+./run_daily.sh
+
+# Publish html/ to the gh-pages branch only
+./publish_pages.sh
 
 # Regenerate the public dashboard only
 python generate_index.py
@@ -24,10 +27,6 @@ python generate_portfolios.py --out /path/out.html
 
 # Initialize or migrate the SQLite database
 python -c "from models import init_db; init_db()"
-
-# Check webhook server health
-curl http://localhost:5000/health
-curl http://localhost:5000/api/live
 ```
 
 ## Architecture
@@ -62,21 +61,13 @@ Most market values in `data` are stored as `(price, change, pct_change)` tuples 
 
 `init_db()` is idempotent and calls `_migrate_add_columns()` to add any new columns without recreating the table.
 
-### Webhook server
+### Hosting
 
-`webhook_server.py` is a Flask app run via Gunicorn in production (see `financial-snapshot-webhook.service`). It serves:
-- `GET /api/live` — real-time market data with 60-second in-memory cache
-- `POST /subscribe` — web form signup
-- `GET /unsubscribe` — confirmation page (intentionally two-step to prevent email security scanners from silently deactivating users)
-- `POST /unsubscribe` — processes the confirmed unsubscribe
-- `POST /webhook` — AgentMail inbound email events (subscribe/unsubscribe via email)
-- `GET /health` — liveness check
-
-The webhook is authenticated via a `?token=WEBHOOK_SECRET` query parameter.
+Everything runs locally. `run_daily.sh` (cron/launchd) runs `financial_snapshot.py` then `publish_pages.sh`, which copies `html/` into a `gh-pages` git worktree (`.pages/`) and pushes it; GitHub Pages serves it at `mktpulse.online`. The dashboard is fully static: there is no live-data API, web signup, or unsubscribe endpoint. Subscribers are managed directly in the SQLite `User` table.
 
 ### Market calendar
 
-`financial_snapshot.py` implements its own NYSE holiday calendar (`_nyse_holidays`) and `is_market_open()` check. The main script exits early with code 0 on non-trading days. The live `/api/live` endpoint does not check this — it always fetches data.
+`financial_snapshot.py` implements its own NYSE holiday calendar (`_nyse_holidays`) and `is_market_open()` check. The main script exits early with code 0 on non-trading days.
 
 ### AI features
 

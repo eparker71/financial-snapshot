@@ -32,10 +32,9 @@ from kalshi_api import fetch_kalshi
 # API keys — set as environment variables, never hardcode
 AGENTMAIL_API_KEY  = os.environ.get("AGENTMAIL_API_KEY", "")
 AGENTMAIL_INBOX_ID = os.environ.get("AGENTMAIL_INBOX_ID", "")
-WEBHOOK_SECRET     = os.environ.get("WEBHOOK_SECRET", "")
 
 # Non-sensitive config — managed in settings.py
-from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL, WEBHOOK_BASE_URL
+from settings import TEST_MODE, EMAIL_TO, LOG_FILE, HTML_OUTPUT_DIR, CREATE_HTML_OUTPUT_FILE, HTML_ROOT_URL
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -426,18 +425,11 @@ def main():
     subject = f"{'[TEST] ' if TEST_MODE else ''}📊 {ai_subject}"
     print(f"  Subject: {subject}")
 
-    def unsubscribe_url(addr: str) -> str:
-        if WEBHOOK_BASE_URL and WEBHOOK_SECRET:
-            from urllib.parse import urlencode
-            return f"{WEBHOOK_BASE_URL}/unsubscribe?{urlencode({'email': addr, 'token': WEBHOOK_SECRET})}"
-        return ""
-
     # Send
     for addr in EMAIL_TO:
         try:
-            unsub_url = unsubscribe_url(addr)
-            html  = build_html(data, now, HTML_ROOT_URL, unsub_url)
-            plain = build_plain(data, now, unsub_url)
+            html  = build_html(data, now, HTML_ROOT_URL)
+            plain = build_plain(data, now)
             result = send_email(subject, html, plain, addr)
             log.info(f"Sent to {addr} — message_id: {result.get('id')}")
             print(f"✓ Sent to {addr}")
@@ -449,9 +441,7 @@ def main():
 
     if CREATE_HTML_OUTPUT_FILE and HTML_OUTPUT_DIR:
         try:
-            # The archive is publicly linked from the dashboard — never embed
-            # per-recipient unsubscribe links (email + WEBHOOK_SECRET) in it.
-            archive_html = build_html(data, now, HTML_ROOT_URL, "")
+            archive_html = build_html(data, now, HTML_ROOT_URL)
             os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
             filename = f"{HTML_OUTPUT_DIR}/output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             with open(filename, "w", encoding="utf-8") as f:

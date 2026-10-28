@@ -4,7 +4,7 @@ generate_index.py
 -----------------
 Generates the public-facing Financial Snapshot dashboard (html/index.html).
 Reads the latest market data from db.sqlite3, fetches recent financial news
-from RSS, and produces a modern HTML dashboard with subscribe form and archive.
+from RSS, and produces a modern HTML dashboard with archive.
 
 Usage:
     python generate_index.py              # writes to ./html/index.html
@@ -292,19 +292,15 @@ def fc(val, suffix="%"):
 
 # ── Component builders ────────────────────────────────────────────────────────
 
-def dr(label, val_str, chg="", sub="", invert=False, live_key=""):
+def dr(label, val_str, chg="", sub="", invert=False):
     """Render a single data row inside a card."""
-    price_live = f' data-live="{live_key}:price"' if live_key else ""
-    price_h = f'<span{price_live}>{html_lib.escape(val_str)}</span>'
+    price_h = f'<span>{html_lib.escape(val_str)}</span>'
 
     if chg:
         is_up = chg.startswith("+")
         good  = (is_up and not invert) or (not is_up and invert)
         c     = "up" if good else "dn"
-        chg_live = f' data-live="{live_key}:change"' if live_key else ""
-        chg_h = f'<span class="dr-chg {c}"{chg_live}>{html_lib.escape(chg)}</span>'
-    elif live_key:
-        chg_h = f'<span class="dr-chg neu" data-live="{live_key}:change"></span>'
+        chg_h = f'<span class="dr-chg {c}">{html_lib.escape(chg)}</span>'
     else:
         chg_h = ""
 
@@ -337,7 +333,7 @@ def render_html(snap, news, entries, firm_insights=None):
     total = len(entries)
 
     # ── Hero tiles ────────────────────────────────────────────────────────────
-    def hero(label, val, chg_pct=None, prefix="$", decimals=2, invert=False, live_key=""):
+    def hero(label, val, chg_pct=None, prefix="$", decimals=2, invert=False):
         val_str = fv(val, decimals, prefix) if val is not None else "—"
         chg     = fc(chg_pct) if chg_pct is not None else ""
         if chg:
@@ -346,13 +342,11 @@ def render_html(snap, news, entries, firm_insights=None):
             cls   = "up" if good else "dn"
         else:
             cls = "neu"
-        price_live = f' data-live="{live_key}:price"' if live_key else ""
-        chg_live   = f' data-live="{live_key}:change"' if live_key else ""
         return (
             f'<div class="hero-tile">'
             f'<div class="h-label">{html_lib.escape(label)}</div>'
-            f'<div class="h-val"{price_live}>{html_lib.escape(val_str)}</div>'
-            f'<div class="h-chg {cls}"{chg_live}>{html_lib.escape(chg)}</div>'
+            f'<div class="h-val">{html_lib.escape(val_str)}</div>'
+            f'<div class="h-chg {cls}">{html_lib.escape(chg)}</div>'
             f'</div>'
         )
 
@@ -363,11 +357,11 @@ def render_html(snap, news, entries, firm_insights=None):
         dj_c = snap.dji_change_pct  or snap.dow_futures_change_pct
 
         heroes = [
-            hero("S&P 500",   sp_p,           sp_c,                  live_key="sp500"),
-            hero("Dow Jones", dj_p,           dj_c,                  live_key="dow"),
-            hero("Bitcoin",   snap.btc_price,  snap.btc_change_pct,   "$", 0, live_key="btc"),
-            hero("Gold",      snap.gold_price, snap.gold_change_pct,  live_key="gold"),
-            hero("VIX",       snap.vix_price,  snap.vix_change_pct,   "", 2, invert=True, live_key="vix"),
+            hero("S&P 500",   sp_p,           sp_c),
+            hero("Dow Jones", dj_p,           dj_c),
+            hero("Bitcoin",   snap.btc_price,  snap.btc_change_pct,   "$", 0),
+            hero("Gold",      snap.gold_price, snap.gold_change_pct),
+            hero("VIX",       snap.vix_price,  snap.vix_change_pct,   "", 2, invert=True),
         ]
         if snap.fear_greed_value is not None:
             fg     = int(snap.fear_greed_value)
@@ -376,8 +370,8 @@ def render_html(snap, news, entries, firm_insights=None):
             heroes.append(
                 f'<div class="hero-tile">'
                 f'<div class="h-label">Fear &amp; Greed</div>'
-                f'<div class="h-val" data-live="fear_greed:price">{fg}</div>'
-                f'<div class="h-chg {fg_cls}" data-live="fear_greed:change">{html_lib.escape(fg_lbl)}</div>'
+                f'<div class="h-val">{fg}</div>'
+                f'<div class="h-chg {fg_cls}">{html_lib.escape(fg_lbl)}</div>'
                 f'</div>'
             )
     else:
@@ -426,11 +420,11 @@ def render_html(snap, news, entries, firm_insights=None):
         rut_c = snap.rut_change_pct  or snap.russell_futures_change_pct
 
         cards_html += card("US Markets", "📈",
-            dr("S&P 500",      fv(sp_p),                  fc(sp_c),                live_key="sp500")    if sp_p           else "",
-            dr("Dow Jones",    fv(dj_p),                  fc(dj_c),                live_key="dow")      if dj_p           else "",
-            dr("Nasdaq 100",   fv(nq_p),                  fc(nq_c),                live_key="nasdaq")   if nq_p           else "",
-            dr("Russell 2000", fv(rut_p),                 fc(rut_c),               live_key="russell")  if rut_p          else "",
-            dr("VIX",          fv(snap.vix_price, 2, ""), fc(snap.vix_change_pct), invert=True, live_key="vix") if snap.vix_price else "",
+            dr("S&P 500",      fv(sp_p),                  fc(sp_c))    if sp_p           else "",
+            dr("Dow Jones",    fv(dj_p),                  fc(dj_c))      if dj_p           else "",
+            dr("Nasdaq 100",   fv(nq_p),                  fc(nq_c))   if nq_p           else "",
+            dr("Russell 2000", fv(rut_p),                 fc(rut_c))  if rut_p          else "",
+            dr("VIX",          fv(snap.vix_price, 2, ""), fc(snap.vix_change_pct), invert=True) if snap.vix_price else "",
         )
 
         cards_html += card("Magnificent 7", "💎",
@@ -469,30 +463,30 @@ def render_html(snap, news, entries, firm_insights=None):
         if sector_rows:
             cards_html += card("Sector Performance", "📊", sector_rows)
 
-        fg_row = (dr("Fear & Greed", f"{int(snap.fear_greed_value)} – {snap.fear_greed_label or ''}", live_key="fear_greed")
+        fg_row = (dr("Fear & Greed", f"{int(snap.fear_greed_value)} – {snap.fear_greed_label or ''}")
                   if snap.fear_greed_value is not None else "")
         cards_html += card("Crypto", "🪙",
-            dr("Bitcoin (BTC)",  fv(snap.btc_price, 0), fc(snap.btc_change_pct), live_key="btc") if snap.btc_price  else "",
-            dr("Ethereum (ETH)", fv(snap.eth_price),    fc(snap.eth_change_pct), live_key="eth") if snap.eth_price  else "",
-            dr("Solana (SOL)",   fv(snap.sol_price),    fc(snap.sol_change_pct), live_key="sol") if snap.sol_price  else "",
-            dr("Ripple (XRP)",   fv(snap.xrp_price, 4), fc(snap.xrp_change_pct), live_key="xrp") if snap.xrp_price else "",
-            dr("Cardano (ADA)",  fv(snap.ada_price, 4), fc(snap.ada_change_pct), live_key="ada") if snap.ada_price else "",
+            dr("Bitcoin (BTC)",  fv(snap.btc_price, 0), fc(snap.btc_change_pct)) if snap.btc_price  else "",
+            dr("Ethereum (ETH)", fv(snap.eth_price),    fc(snap.eth_change_pct)) if snap.eth_price  else "",
+            dr("Solana (SOL)",   fv(snap.sol_price),    fc(snap.sol_change_pct)) if snap.sol_price  else "",
+            dr("Ripple (XRP)",   fv(snap.xrp_price, 4), fc(snap.xrp_change_pct)) if snap.xrp_price else "",
+            dr("Cardano (ADA)",  fv(snap.ada_price, 4), fc(snap.ada_change_pct)) if snap.ada_price else "",
             fg_row,
         )
 
         cards_html += card("Energy & Metals", "⛽",
-            dr("Crude Oil (WTI)",  fv(snap.oil_price),    fc(snap.oil_change_pct),    live_key="oil")    if snap.oil_price    else "",
+            dr("Crude Oil (WTI)",  fv(snap.oil_price),    fc(snap.oil_change_pct))    if snap.oil_price    else "",
             dr("US Gas (avg)",     f"${snap.gas_price:.3f}/gal")                                          if snap.gas_price    else "",
             dr("US Diesel (avg)",  f"${snap.diesel_price:.3f}/gal")                                       if snap.diesel_price else "",
-            dr("Gold",             fv(snap.gold_price),   fc(snap.gold_change_pct),   live_key="gold")   if snap.gold_price   else "",
-            dr("Silver",           fv(snap.silver_price), fc(snap.silver_change_pct), live_key="silver") if snap.silver_price else "",
+            dr("Gold",             fv(snap.gold_price),   fc(snap.gold_change_pct))   if snap.gold_price   else "",
+            dr("Silver",           fv(snap.silver_price), fc(snap.silver_change_pct)) if snap.silver_price else "",
         )
 
         cards_html += card("FX & Rates", "💱",
-            dr("EUR/USD",         f"{snap.eurusd_price:.4f}" if snap.eurusd_price else "—",   fc(snap.eurusd_change_pct), live_key="eurusd") if snap.eurusd_price  else "",
-            dr("USD/JPY",         f"¥{snap.usdjpy_price:.2f}" if snap.usdjpy_price else "—",  fc(snap.usdjpy_change_pct), live_key="usdjpy") if snap.usdjpy_price  else "",
-            dr("10-Yr Treasury",  f"{snap.t10y_yield:.3f}%" if snap.t10y_yield else "—",      fc(snap.t10y_change_pct), invert=True, live_key="t10y") if snap.t10y_yield   else "",
-            dr("13-Wk T-Bill",    f"{snap.t2y_yield:.3f}%"  if snap.t2y_yield  else "—",      fc(snap.t2y_change_pct),  invert=True, live_key="t2y")  if snap.t2y_yield    else "",
+            dr("EUR/USD",         f"{snap.eurusd_price:.4f}" if snap.eurusd_price else "—",   fc(snap.eurusd_change_pct)) if snap.eurusd_price  else "",
+            dr("USD/JPY",         f"¥{snap.usdjpy_price:.2f}" if snap.usdjpy_price else "—",  fc(snap.usdjpy_change_pct)) if snap.usdjpy_price  else "",
+            dr("10-Yr Treasury",  f"{snap.t10y_yield:.3f}%" if snap.t10y_yield else "—",      fc(snap.t10y_change_pct), invert=True) if snap.t10y_yield   else "",
+            dr("13-Wk T-Bill",    f"{snap.t2y_yield:.3f}%"  if snap.t2y_yield  else "—",      fc(snap.t2y_change_pct),  invert=True)  if snap.t2y_yield    else "",
             dr("30-Yr Mortgage",  f"{snap.mortgage_rate:.2f}%")                                                                                         if snap.mortgage_rate else "",
             dr("Credit Card APR", f"{snap.credit_card_apr:.2f}%")                                                                                       if snap.credit_card_apr else "",
         )
@@ -642,27 +636,6 @@ def render_html(snap, news, entries, firm_insights=None):
       border-radius: 6px; transition: border-color .15s, color .15s;
     }}
     .tb-nav:hover {{ border-color: var(--border2); color: var(--t1); }}
-    .tb-cta {{
-      font-size: 13px; font-weight: 500; color: var(--accent);
-      padding: 6px 14px; border: 1px solid var(--accent);
-      border-radius: 6px; transition: background .15s;
-    }}
-    .tb-cta:hover {{ background: rgba(56,139,253,.1); }}
-    .live-badge {{
-      display: flex; align-items: center; gap: 5px;
-      font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--up);
-    }}
-    .live-dot {{
-      width: 6px; height: 6px; border-radius: 50%; background: var(--up);
-      animation: livepulse 2s ease-in-out infinite;
-    }}
-    @keyframes livepulse {{
-      0%, 100% {{ opacity: 1; transform: scale(1); }}
-      50%       {{ opacity: 0.35; transform: scale(0.85); }}
-    }}
-    .tb-updated {{ font-size: 11px; color: var(--t3); font-family: 'JetBrains Mono', monospace; }}
-
     /* ── Page wrapper ───────────────────────────────── */
     .page {{ max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }}
 
@@ -798,34 +771,6 @@ def render_html(snap, news, entries, firm_insights=None):
     .fi-row:last-child {{ border-bottom: none; }}
     .fi-row:hover {{ color: var(--t1); background: var(--bg3); }}
 
-    /* ── Subscribe ──────────────────────────────────── */
-    .sub-card {{
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 36px 40px;
-      display: flex; align-items: center; gap: 48px;
-    }}
-    .sub-copy       {{ flex: 1; }}
-    .sub-copy h2    {{ font-size: 20px; font-weight: 600; margin-bottom: 6px; }}
-    .sub-copy p     {{ color: var(--t2); font-size: 14px; }}
-    .sub-form       {{ flex: 1; display: flex; flex-direction: column; gap: 10px; }}
-    .form-row       {{ display: flex; gap: 8px; }}
-    .form-row input, .sub-form input[type="email"] {{
-      flex: 1; background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 6px; padding: 9px 12px; color: var(--t1);
-      font-size: 13px; font-family: inherit; outline: none;
-      transition: border-color .15s;
-    }}
-    .form-row input:focus, .sub-form input[type="email"]:focus {{ border-color: var(--accent); }}
-    .sub-form button {{
-      background: var(--accent); color: #fff; border: none; border-radius: 6px;
-      padding: 10px; font-size: 14px; font-weight: 500; cursor: pointer;
-      font-family: inherit; transition: opacity .15s;
-    }}
-    .sub-form button:hover {{ opacity: .85; }}
-    .sub-msg      {{ font-size: 13px; min-height: 18px; }}
-    .sub-msg.ok   {{ color: var(--up); }}
-    .sub-msg.err  {{ color: var(--dn); }}
-
     /* ── Archive ────────────────────────────────────── */
     .arc-grid   {{ display: flex; flex-direction: column; gap: 20px; }}
     .arc-mhd    {{
@@ -875,10 +820,7 @@ def render_html(snap, news, entries, firm_insights=None):
     <span class="tb-badge">Last snapshot: {snap_time}</span>
   </div>
   <div class="tb-right">
-    <div class="live-badge"><div class="live-dot"></div>Live</div>
-    <span class="tb-updated" id="live-ts">updating…</span>
     <a href="portfolios.html" class="tb-nav">Portfolios</a>
-    <a href="#subscribe" class="tb-cta">Subscribe</a>
   </div>
 </header>
 
@@ -902,24 +844,6 @@ def render_html(snap, news, entries, firm_insights=None):
 
   {firm_insights_section}
 
-  <section class="page-sec" id="subscribe">
-    <h2 class="sec-hd">Daily Email</h2>
-    <div class="sub-card">
-      <div class="sub-copy">
-        <h2>Get the Daily Snapshot</h2>
-        <p>Markets, crypto, energy, rates, and macro&nbsp;&mdash; delivered to your inbox each morning.</p>
-      </div>
-      <form class="sub-form" id="sub-form">
-        <div class="form-row">
-          <input type="text" name="first_name" placeholder="First name">
-          <input type="email" name="email" placeholder="Email address" required>
-        </div>
-        <button type="submit">Subscribe &rarr;</button>
-        <div class="sub-msg" id="sub-msg"></div>
-      </form>
-    </div>
-  </section>
-
   {archive_section}
 
   <footer class="footer">
@@ -928,72 +852,6 @@ def render_html(snap, news, entries, firm_insights=None):
   </footer>
 
 </div>
-
-<script>
-// ── Live data polling ────────────────────────────────────────────────────────
-const POLL_INTERVAL = 60000; // ms
-
-function applyLiveData(data) {{
-  document.querySelectorAll('[data-live]').forEach(el => {{
-    const [key, type] = el.getAttribute('data-live').split(':');
-    const item = data[key];
-    if (!item) return;
-    if (type === 'price') {{
-      el.textContent = item.price;
-    }} else if (type === 'change') {{
-      el.textContent = item.change;
-      if (item.cls) {{
-        el.className = el.className.replace(/\b(up|dn|neu)\b/g, '').trim() + ' ' + item.cls;
-      }}
-    }}
-  }});
-  const ts = document.getElementById('live-ts');
-  if (ts && data.updated_at) ts.textContent = data.updated_at;
-}}
-
-async function pollLive() {{
-  try {{
-    const r = await fetch('/api/live');
-    if (r.ok) applyLiveData(await r.json());
-  }} catch (e) {{
-    console.warn('Live data fetch failed:', e);
-  }}
-}}
-
-pollLive();
-setInterval(pollLive, POLL_INTERVAL);
-
-// ── Subscribe form ───────────────────────────────────────────────────────────
-document.getElementById('sub-form').addEventListener('submit', async function(e) {{
-  e.preventDefault();
-  const msg = document.getElementById('sub-msg');
-  msg.className = 'sub-msg';
-  msg.textContent = 'Subscribing\u2026';
-  const data = {{
-    first_name: (this.first_name.value || '').trim(),
-    email:      this.email.value.trim(),
-  }};
-  try {{
-    const r = await fetch('/subscribe', {{
-      method: 'POST',
-      headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify(data),
-    }});
-    if (r.ok) {{
-      msg.className = 'sub-msg ok';
-      msg.textContent = "You\u2019re subscribed! Check your inbox for a confirmation.";
-      this.reset();
-    }} else {{
-      const j = await r.json().catch(() => ({{}}));
-      msg.className = 'sub-msg err';
-      msg.textContent = j.error || 'Something went wrong. Please try again.';
-    }}
-  }} catch {{
-    msg.className = 'sub-msg err';
-    msg.textContent = 'Could not connect. Please try again.';
-  }}
-}});
-</script>
 
 </body>
 </html>"""

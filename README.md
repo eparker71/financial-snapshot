@@ -1,6 +1,6 @@
 # Market Pulse
 
-A Python application that fetches live financial market data from multiple APIs, generates an AI-powered morning briefing, sends a daily HTML email snapshot, and serves a real-time public dashboard.
+A Python application that fetches live financial market data from multiple APIs, generates an AI-powered morning briefing, sends a daily HTML email snapshot, and publishes a static public dashboard to GitHub Pages.
 
 ## Features
 
@@ -11,12 +11,10 @@ A Python application that fetches live financial market data from multiple APIs,
 - **Economic Indicators**: CPI, unemployment, GDP, mortgage rates, and credit card rates from FRED (Federal Reserve Economic Data)
 - **Market Data**: Stocks, commodities, currencies, bonds, and indices from Yahoo Finance — including Magnificent 7 stocks
 - **National Debt**: US national debt data from Treasury Fiscal Data API
-- **Email Delivery**: Sends formatted HTML emails via AgentMail, with per-recipient unsubscribe links
-- **Self-Service Signup**: Users can subscribe or unsubscribe by emailing the AgentMail inbox or via the web signup form
-- **Public Dashboard**: Auto-generated landing page with real-time market data, live news headlines, firm insights, email signup, and a snapshot archive
+- **Email Delivery**: Sends formatted HTML emails via AgentMail
+- **Public Dashboard**: Auto-generated landing page with latest snapshot data, news headlines, firm insights, and a snapshot archive
 - **AI Portfolio Advisor**: Generates a tabbed portfolio recommendations page (`html/portfolios.html`) with four strategies per brokerage (Fidelity, Vanguard, Schwab, E*TRADE, Generic). Uses Claude Sonnet to select brokerage-appropriate funds, then validates every ticker live via Yahoo Finance for expense ratios and AUM.
 - **Firm Insights**: Curated articles from Fidelity, BlackRock, J.P. Morgan AM, MarketWatch, and the On Watch podcast
-- **Live Data API**: `/api/live` endpoint (60-second cache) powers in-page polling so dashboard values update without a page reload
 - **Snapshot Storage**: Saves each run's market data to a SQLite database for historical tracking and analytics
 - **Test Mode**: Safe testing mode that only sends to test email addresses
 
@@ -40,10 +38,6 @@ financial_snapshot.py     # Main application orchestrator
 ├── models.py             # SQLite models: User and Snapshot (Peewee ORM)
 ├── generate_index.py     # Generates html/index.html — the public dashboard
 ├── generate_portfolios.py # Generates html/portfolios.html — AI portfolio advisor
-├── webhook_server.py     # Flask/Gunicorn server: live data API, web signup, webhooks
-├── register_webhook.py   # One-time script to register webhook with AgentMail
-├── financial-snapshot-webhook.service  # systemd unit for webhook server (Gunicorn)
-├── nginx-webhook.conf    # Nginx reverse proxy config snippet
 ├── .env                  # Secret API keys (never committed)
 ├── .env.example          # Template showing required keys
 ├── db.sqlite3            # SQLite database (never committed)
@@ -92,13 +86,6 @@ ANTHROPIC_API_KEY=your_anthropic_key   # optional — enables AI Morning Briefin
 
 The app loads `.env` automatically at startup via `python-dotenv`. The `.env` file is excluded from git. If the keys are already set as environment variables (e.g. in CI or a cron environment), those take priority over `.env`.
 
-If you are using the webhook server (live dashboard, web signup, inbound email signups), also add:
-
-```bash
-WEBHOOK_SECRET=choose_a_random_secret_string
-WEBHOOK_PORT=5000
-WEBHOOK_BASE_URL=https://yourdomain.com  # used to build unsubscribe links in emails
-```
 
 ### 3. Email Configuration
 
@@ -203,80 +190,20 @@ This generates a tabbed page with four portfolio strategies per brokerage:
 
 Each portfolio covers four strategies: Dividend Income, Aggressive Growth, Moderate Growth, and Capital Preservation. Expense ratios and AUM are validated live against Yahoo Finance. The page links back to the main dashboard and is linked from the dashboard's top navigation bar.
 
-### Scheduled Execution
+### Scheduled Execution & Publishing
 
-Set up a cron job to run daily (example for 7 AM ET):
-
-```bash
-# Add to crontab (crontab -e)
-0 7 * * * /path/to/venv/bin/python /path/to/financial_snapshot_prod/financial_snapshot.py
-```
-
-No need to export API keys in the cron entry — the app loads them from `.env` automatically.
-
-### Webhook Server (Self-Service Signups)
-
-The webhook server allows users to subscribe or unsubscribe by sending an email to your AgentMail inbox.
-
-**Deploy on Ubuntu (Gunicorn + Nginx):**
+`run_daily.sh` sends the email, regenerates the dashboard, and pushes `html/` to the `gh-pages` branch (GitHub Pages). Schedule it locally:
 
 ```bash
-# 1. Create the logs directory
-mkdir -p ~/applications/Financial-Snapshot/logs
-
-# 2. Install and start the systemd service (runs Gunicorn on 127.0.0.1:5000)
-sudo cp financial-snapshot-webhook.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable financial-snapshot-webhook
-sudo systemctl start financial-snapshot-webhook
-
-# 3. Add the Nginx reverse proxy — copy the relevant block from nginx-webhook.conf
-#    into your existing server block, then reload Nginx
-sudo nginx -t && sudo systemctl reload nginx
-
-# 4. Register the webhook URL with AgentMail (once)
-#    Include the token query param matching WEBHOOK_SECRET in your .env
-python register_webhook.py https://yourdomain.com/webhook?token=YOUR_WEBHOOK_SECRET
-
-# 5. Generate the dashboard
-python generate_index.py
-
-# 6. Verify
-curl http://localhost:5000/health       # direct Gunicorn check
-curl https://yourdomain.com/health      # through Nginx
-curl https://yourdomain.com/api/live    # live data JSON
+# crontab -e   (7 AM local time, weekdays; the script itself skips market holidays)
+0 7 * * 1-5 /path/to/financial_snapshot/run_daily.sh >> /path/to/financial_snapshot/logs/cron.log 2>&1
 ```
 
-The server exposes these endpoints (all proxied by Nginx):
+The Mac must be awake at that time (e.g. `sudo pmset repeat wakeorpoweron MTWRF 06:55:00`). No need to export API keys — the app loads `.env` automatically.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/live` | GET | Real-time market data JSON (60s cache) — polled by the dashboard |
-| `/subscribe` | POST | Web form signup from the dashboard |
-| `/unsubscribe` | GET | Unsubscribe confirmation page (does **not** unsubscribe immediately) |
-| `/unsubscribe` | POST | Confirms and processes the unsubscribe |
-| `/webhook` | POST | AgentMail inbound email events |
-| `/health` | GET | Liveness check |
+**One-time GitHub Pages setup:** run `./publish_pages.sh` once to create the `gh-pages` branch, then in the repo's Settings → Pages choose "Deploy from branch → gh-pages / (root)" and set the custom domain `mktpulse.online` (the script writes the `CNAME` file). Point the domain's DNS at GitHub Pages.
 
-**How email signups work:**
-- User fills out the form on the dashboard → `POST /subscribe`
-- User sends an email to your AgentMail inbox with **"subscribe"** in the subject → added via webhook
-- User clicks the unsubscribe link in a daily email → `GET /unsubscribe` shows a confirmation page → user clicks the button → `POST /unsubscribe` deactivates the account
-- User sends an email with **"unsubscribe"** in the subject → deactivated via webhook
-
-> **Note:** The unsubscribe link in emails intentionally requires a confirmation click before deactivating the account. This prevents email security scanners (Proofpoint, Barracuda, MS Defender, etc.) from auto-clicking the link and silently unsubscribing users.
-
-### HTML Output
-
-When `HTML_OUTPUT = True` in settings.py, the application saves the generated HTML to the `html/` directory with timestamps.
-
-### Snapshot Storage
-
-Each run saves a full row of market data to the `snapshots` table in `db.sqlite3`. You can query historical data directly:
-
-```bash
-sqlite3 db.sqlite3 "SELECT timestamp, btc_price, gspc_price FROM snapshots ORDER BY timestamp DESC LIMIT 5;"
-```
+Subscribers are managed directly in the `User` table of `db.sqlite3`; there is no web signup or unsubscribe link.
 
 ## APIs Used
 
@@ -321,7 +248,6 @@ The application logs to `logs/financial_snapshot_app.log`. Check the logs for AP
 2. **Email Not Sending**: Check `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` in `.env`
 3. **Import Errors**: Make sure you're running from the virtual environment
 4. **Missing directories**: `logs/` and `html/` are created automatically on first run
-5. **Webhook not receiving events**: Ensure Nginx is running and the reverse proxy config is in place. Port 5000 should remain closed to the public — Nginx proxies to it internally. Verify with `curl http://localhost:5000/health` on the server.
 
 ### Test Mode
 
