@@ -24,9 +24,11 @@ touch .pages/.nojekyll
 
 cd .pages
 git add -A
-if git diff --cached --quiet; then
+if ! git diff --cached --quiet; then
+  git commit -q -m "publish $(date '+%Y-%m-%d %H:%M')"
+elif [ -z "$(git log @{u}..HEAD --oneline 2>/dev/null)" ]; then
   echo "No changes to publish."
   exit 0
 fi
-git commit -q -m "publish $(date '+%Y-%m-%d %H:%M')"
+# Also pushes any earlier local commits that never made it to the remote.
 git push -u origin gh-pages
