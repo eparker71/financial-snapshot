@@ -48,7 +48,7 @@ Most market values in `data` are stored as `(price, change, pct_change)` tuples 
 | File | Contains |
 |------|----------|
 | `.env` | API keys (never committed) |
-| `app_secrets.py` | `TEST_MODE`, `TEST_EMAIL` (sensitive runtime flags) |
+| `app_secrets.py` | `TEST_MODE`, `TEST_EMAIL` (sensitive runtime flags). `TEST_MODE` is derived from the `ENV` env var: `PROD` sends to all active users, anything else (default `DEV`) sends only to `TEST_EMAIL`. `run_daily.sh` exports `ENV=PROD` |
 | `settings.py` | Everything else — imports from the above two |
 
 `settings.py` is imported by `financial_snapshot.py` at startup. It calls `init_db()` as a side effect, so it should not be imported in contexts where a database connection is undesirable.
@@ -71,7 +71,7 @@ Everything runs locally. `run_daily.sh` (cron/launchd) runs `financial_snapshot.
 
 ### AI features
 
-Two separate AI calls, both using the Anthropic SDK:
+Three separate AI calls, all using the Anthropic SDK:
 1. **Daily briefing** (`generate_market_analysis`) — called in every run, uses `claude-haiku-4-5`, returns JSON with `briefing`, `subject`, and `watch` fields.
 2. **Anomaly alert** (`generate_anomaly_alert`) — only called when `detect_anomalies()` finds flagged moves; uses `claude-haiku-4-5`, returns 1–2 sentences.
 3. **Portfolio advisor** (`generate_portfolios.py`) — one-off generation using `claude-sonnet-4-6`.
@@ -81,6 +81,13 @@ All AI calls are skipped gracefully when `ANTHROPIC_API_KEY` is not set.
 ### Dashboard generation
 
 `generate_index.py` reads the latest `Snapshot` from SQLite, scrapes financial news RSS feeds and firm insight pages (Fidelity, BlackRock, J.P. Morgan AM, MarketWatch), and writes `html/index.html`. It is called automatically at the end of each `financial_snapshot.py` run. The `html/` directory also stores timestamped snapshot archives (`output_YYYYMMDD_HHMMSS.html`) that are linked from the dashboard.
+
+## Gotchas
+
+- There is no test suite or linter. Verify changes by running `python generate_index.py` (writes `html/index.html`, needs network for the news scrape) or `financial_snapshot.py` with `TEST_MODE` on.
+- The repo lives in OneDrive. If git fails with `mmap failed: Operation timed out`, OneDrive has evicted `.git/objects` files to cloud-only placeholders; keep the folder set to "Always Keep on This Device".
+- `html/` and `.pages/` are gitignored. `html/` is published only via `publish_pages.sh` (the `gh-pages` branch), never committed to `main`.
+- The email recipient list (`EMAIL_TO`) is read from the `User` table when `settings.py` is imported; subscribers are edited directly in SQLite since there is no signup or unsubscribe flow.
 
 ## Key conventions
 
