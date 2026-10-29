@@ -63,7 +63,7 @@ Most market values in `data` are stored as `(price, change, pct_change)` tuples 
 
 ### Hosting
 
-Everything runs locally. `run_daily.sh` (cron/launchd) runs `financial_snapshot.py` then `publish_pages.sh`, which copies `html/` into a `gh-pages` git worktree (`.pages/`) and pushes it; GitHub Pages serves it. The custom domain is opt-in: `publish_pages.sh` writes `CNAME` only when `PAGES_CNAME=mktpulse.online` is set (not yet, pending the DNS cutover), and it also pushes any unpushed local `gh-pages` commits. If a push is rejected, someone (e.g. the GitHub Pages settings UI) has committed to `gh-pages`; rebase `.pages/` onto `origin/gh-pages` rather than forcing. The dashboard is fully static: there is no live-data API, web signup, or unsubscribe endpoint. Subscribers are managed directly in the SQLite `User` table.
+Everything runs locally. `run_daily.sh` (cron/launchd) runs `financial_snapshot.py` then `publish_pages.sh`, which copies `html/` into a `gh-pages` git worktree (`.pages/`) and pushes it; GitHub Pages serves it. The custom domain is opt-in: `publish_pages.sh` writes `CNAME` only when `PAGES_CNAME` is set; `run_daily.sh` exports `PAGES_CNAME=mktpulse.online` by default (the Hostinger DNS records must point at GitHub Pages), and `publish_pages.sh` also pushes any unpushed local `gh-pages` commits. If a push is rejected, someone (e.g. the GitHub Pages settings UI) has committed to `gh-pages`; rebase `.pages/` onto `origin/gh-pages` rather than forcing. The dashboard is fully static: there is no live-data API, web signup, or unsubscribe endpoint. Subscribers are managed directly in the SQLite `User` table.
 
 ### Market calendar
 
